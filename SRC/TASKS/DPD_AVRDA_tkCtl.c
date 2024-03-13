@@ -8,7 +8,7 @@
 
 #include "DPD_AVRDA.h"
 
-#define TKCTL_DELAY_S	1
+#define TKCTL_DELAY_S   5
 
 void sys_watchdog_check(void);
 void sys_daily_reset(void);
@@ -21,15 +21,15 @@ void tkCtl(void * pvParameters)
 
 ( void ) pvParameters;
 
-	vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+	vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     xprintf_P(PSTR("Starting tkCtl..\r\n"));
       
     WDG_INIT(); // Pone todos los bits habilitados en 1
      
 	// Arranco el RTC. Si hay un problema lo inicializo.
-    //RTC_init();
+    RTC_init();
 
-    vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+    vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     
     // Por ultimo habilito a todas las otras tareas a arrancar
     starting_flag = true;
@@ -38,7 +38,7 @@ void tkCtl(void * pvParameters)
 	{
         // Duerme 5 secs y corre.
         //vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
-		vTaskDelay( ( TickType_t)( 500 * TKCTL_DELAY_S / portTICK_PERIOD_MS ) );
+		vTaskDelay( ( TickType_t)( 1000 * TKCTL_DELAY_S / portTICK_PERIOD_MS ) );
         led_flash();
         sys_watchdog_check();
         sys_daily_reset();
@@ -57,15 +57,16 @@ static uint16_t wdg_count = 0;
 uint8_t i;
 
     //xprintf_P(PSTR("wdg reset\r\n"));
-    //wdt_reset();
-    //return;
+//    wdt_reset();
+//    return;
         
-    // EL wdg lo leo cada 240secs ( 5 x 60 )
-    if ( wdg_count++ <  (240 / TKCTL_DELAY_S ) ) {
-        wdt_reset();
+    wdt_reset();
+
+    // EL wdg lo leo cada 30 secs ( 5 x 6 )
+    if ( wdg_count++ <  (30 / TKCTL_DELAY_S ) ) {
         return;
     }
-    
+   
     //xprintf_P(PSTR("DEBUG: wdg check\r\n"));
     wdg_count = 0;
     

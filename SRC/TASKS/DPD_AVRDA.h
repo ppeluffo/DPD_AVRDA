@@ -82,12 +82,14 @@ extern "C" {
 #include "rtc79410.h"
 #include "contadores.h"
 #include "toyi_valves.h"
+#include "tmc2209.h"
+#include "opto.h"
 
 #define FW_REV "0.0.1"
-#define FW_DATE "@ 20240311"
+#define FW_DATE "@ 20240313"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
-#define FW_TYPE "SPQ"
+#define FW_TYPE "DPD"
 
 #define SYSMAINCLK 24
 
@@ -127,14 +129,12 @@ struct {
 
 void system_init();
 void reset(void);
-void u_config_default(void);
 bool u_save_config_in_NVM(void);
 bool u_load_config_from_NVM(void);
 
 void SYSTEM_ENTER_CRITICAL(void);
 void SYSTEM_EXIT_CRITICAL(void);
 void u_kick_wdt( uint8_t wdg_gc);
-
 
 uint8_t sys_watchdog;
 uint8_t task_running;

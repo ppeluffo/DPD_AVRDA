@@ -22,27 +22,22 @@ void tkSys(void * pvParameters)
      * entonces es de 32 bits.
      * 
      */
-TickType_t xLastWakeTime;
 
 	while (!starting_flag )
 		vTaskDelay( ( TickType_t)( 100 / portTICK_PERIOD_MS ) );
+    
+    vTaskDelay( ( TickType_t)( 250 / portTICK_PERIOD_MS ) );
     
     SYSTEM_ENTER_CRITICAL();
     task_running |= SYS_WDG_gc;
     SYSTEM_EXIT_CRITICAL();
     
     xprintf_P(PSTR("Starting tkSys..\r\n"));
-        
-    // Espero solo 10s para el primer poleo ( no lo almaceno !!)
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
+           
 	for( ;; )
-	{
-       
-        xLastWakeTime = xTaskGetTickCount();
-               
+	{         
         u_kick_wdt(SYS_WDG_gc);
-        vTaskDelayUntil( &xLastWakeTime, ( 10000 / portTICK_PERIOD_MS ) );
+        vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
     }
 
 }

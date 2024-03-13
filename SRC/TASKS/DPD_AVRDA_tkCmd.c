@@ -29,7 +29,7 @@ void tkCmd(void * pvParameters)
     task_running |= CMD_WDG_gc;
     SYSTEM_EXIT_CRITICAL();
              
-	//vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
+	vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
 
 uint8_t c = 0;
 
@@ -70,6 +70,26 @@ static void cmdTestFunction(void)
 
     FRTOS_CMD_makeArgv();
    
+    if ( !strcmp_P( strupr(argv[1]), PSTR("VALVE"))) {
+        valve_tests( argv[2], argv[3]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+
+    if ( !strcmp_P( strupr(argv[1]), PSTR("CNT"))) {
+        counter_test( argv[2] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+    
+    if ( !strcmp_P( strupr(argv[1]), PSTR("STEPPER"))) {
+        tmc2209_test( argv[2], argv[3], argv[4], argv[5] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+    
+    if ( !strcmp_P( strupr(argv[1]), PSTR("OPTO"))) {
+        opto_test( argv[2] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+    
     pv_snprintfP_ERR();
     return;
        
@@ -92,7 +112,7 @@ static void cmdHelpFunction(void)
         
     }  else if ( !strcmp_P( strupr(argv[1]), PSTR("CONFIG"))) {
 		xprintf_P( PSTR("-config:\r\n"));
-        xprintf_P( PSTR("  default, save, load\r\n"));
+        xprintf_P( PSTR("  save, load\r\n"));
         
     	// HELP RESET
 	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
@@ -102,6 +122,12 @@ static void cmdHelpFunction(void)
         
     } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
 		xprintf_P( PSTR("-test\r\n"));
+        xprintf_P( PSTR("  valve {id} {open|close}\r\n"));
+        xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
+        xprintf_P( PSTR("  stepper {id} {en|dir} {on|off}\r\n"));
+        xprintf_P( PSTR("               run {fw|rev} secs\r\n"));
+        xprintf_P( PSTR("               stop\r\n"));
+        xprintf_P( PSTR("  opto {on|off}\r\n"));
         xprintf_P( PSTR("  kill {wan,sys}\r\n"));
         return;
         
@@ -115,7 +141,8 @@ static void cmdHelpFunction(void)
         xprintf("-write...\r\n");
         xprintf("-config...\r\n");
         xprintf("-read...\r\n");
-
+        xprintf("-tmc...\r\n");
+       
     }
    
 	xprintf("Exit help \r\n");
@@ -194,10 +221,50 @@ static void cmdStatusFunction(void)
 
     // https://stackoverflow.com/questions/12844117/printing-defined-constants
 
+vstatus_t vstatus;
+cnt_cb_t  cnt_cb;
+uint8_t i;
 
     xprintf("Spymovil %s %s TYPE=%s, VER=%s %s \r\n" , HW_MODELO, FRTOS_VERSION, FW_TYPE, FW_REV, FW_DATE);
       
-    xprintf_P(PSTR("Config:\r\n"));
+    xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
+    
+    xprintf_P(PSTR("Valves:\r\n"));
+    get_valve_status(&vstatus);
+    if (vstatus.vs1 == VALVE_OPEN ) {
+        xprintf_P(PSTR(" V1:OPEN\r\n"));
+    } else {
+        xprintf_P(PSTR(" V1:CLOSE\r\n"));
+    }
+    if (vstatus.vs2 == VALVE_OPEN ) {
+        xprintf_P(PSTR(" V2:OPEN\r\n"));
+    } else {
+        xprintf_P(PSTR(" V2:CLOSE\r\n"));
+    }
+    if (vstatus.vs3 == VALVE_OPEN ) {
+        xprintf_P(PSTR(" V3:OPEN\r\n"));
+    } else {
+        xprintf_P(PSTR(" V3:CLOSE\r\n"));
+    }
+    
+    xprintf_P(PSTR("Contador: %lu\r\n"), counter_read() );
+    
+    get_tmc2209_status(&cnt_cb);
+    xprintf_P(PSTR("Motores:\r\n"));
+    for (i=0; i<3; i++) {
+        if ( cnt_cb.status[i] == RUNNING ) {
+            xprintf_P(PSTR(" M%d: running, %lu\r\n"), i, cnt_cb.cnt[i]);
+        } else {
+            xprintf_P(PSTR(" M%d: stopped\r\n"), i);
+        }
+    }
+    
+    if ( opto_get_status() ) {
+        xprintf_P(PSTR("Opto Led: ON\r\n"));
+    } else {
+        xprintf_P(PSTR("Opto Led: OFF\r\n"));
+    }
+    
     //xprintf_P(PSTR(" date: %s\r\n"), RTC_logprint(FORMAT_LONG));
 }
 //------------------------------------------------------------------------------
@@ -251,14 +318,6 @@ static void cmdConfigFunction(void)
 	// config load
 	if (!strcmp_P( strupr(argv[1]), PSTR("LOAD"))) {
 		u_load_config_from_NVM();
-		pv_snprintfP_OK();
-		return;
-	}
-    
-    // DEFAULT
-	// config default
-	if (!strcmp_P( strupr(argv[1]), PSTR("DEFAULT"))) {
-		u_config_default();
 		pv_snprintfP_OK();
 		return;
 	}

@@ -20,24 +20,15 @@ void system_init()
     // Init OUT OF RTOS !!!
     
 	CLKCTRL_init();
-    //WDT_init();
+    WDT_init();
     LED_init();
     XPRINTF_init();
-    VALVE_init(); 
+    TOYI_VALVES_init();
+    CNT0_CONFIG();
+    TMC2209_init();
+    CONFIG_OPTO();
     I2C_init();
-    
-    CONFIG_EN_PWR_CPRES();
-    CONFIG_EN_PWR_SENSEXT();
-    CONFIG_EN_PWR_QMBUS();
-    
-    CONFIG_RTS_485();
-    
-    CONFIG_EN_SENS3V3();
-    CONFIG_EN_SENS12V();
-    CONFIG_PWR_SENSORS();
-    
-    
-     
+        
 }
 //-----------------------------------------------------------------------------
 int8_t WDT_init(void)
@@ -86,11 +77,6 @@ void u_config_default(void)
     // Configuro a default todas las configuraciones locales
     // y luego actualizo el systemConf
         
-}
-//------------------------------------------------------------------------------
-bool config_debug( char *tipo, char *valor)
-{
-    return(true);
 }
 //------------------------------------------------------------------------------
 bool u_save_config_in_NVM(void)
