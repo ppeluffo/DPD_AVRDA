@@ -8,9 +8,6 @@ void tmc2209_TimerCallback( TimerHandle_t xTimer );
 #define TIMER_CALLBACK_MS  5
 #define TIMER_FREQ_MS   ( TIMER_CALLBACK_MS * 2 )
 
-
-cnt_cb_t CNT_CB;
-
 //------------------------------------------------------------------------------
 void TMC2209_init(void)
 {
@@ -41,8 +38,8 @@ uint8_t i;
     TMC2209_2_STEP_OFF();
     
     for (i=0; i<3; i++) {
-        CNT_CB.cnt[i] = 0;
-        CNT_CB.status[i] = STOPPED;        
+        STEPPERS_CB.cnt[i] = 0;
+        STEPPERS_CB.status[i] = STOPPED; 
     }
     
     tmc2209_xTimer = xTimerCreateStatic (
@@ -64,17 +61,24 @@ void tmc2209_TimerCallback( TimerHandle_t xTimer )
 uint8_t i;
     
 	// Genera un pulso.
-    TMC2209_0_STEP_TOGGLE();
-    TMC2209_1_STEP_TOGGLE();
-    TMC2209_2_STEP_TOGGLE();
     
     for (i=0; i<3; i++) {
+                
         // Si el contador esta corriendo...
-        if ( CNT_CB.status[i] == RUNNING ) {
+        if ( STEPPERS_CB.status[i] == RUNNING ) {
     
-            if ( CNT_CB.cnt[i] > 0 ) {
+            if ( i == 0 )
+                TMC2209_0_STEP_TOGGLE();
+
+            if ( i == 1 )
+                TMC2209_1_STEP_TOGGLE();
+        
+            if ( i == 2 )
+                TMC2209_2_STEP_TOGGLE();
+
+            if ( STEPPERS_CB.cnt[i] > 0 ) {
                 // Si no llego al final, sigo contando
-                CNT_CB.cnt[i]--;
+                STEPPERS_CB.cnt[i]--;
             } else {
                 // LLego al final: lo detengo
                 tmc2209_stop(i);
@@ -210,37 +214,49 @@ bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs )
 //------------------------------------------------------------------------------
 void tmc2209_run(uint8_t id, char *s_action, uint16_t secs)
 {
-    
+    /*
+     * En el DPD siempre se mueven FORWARD !!!
+     * No importa s_action
+     */
     switch(id) {
         case 0:
+            /*
             if (!strcmp_P( strupr(s_action), PSTR("FW")) ) {
                 TMC2209_0_FORWARD();
             } else {
                 TMC2209_0_REVERSE();
             }
+             */
+            TMC2209_0_FORWARD();
             TMC2209_0_ENABLE();
-            CNT_CB.cnt[0] = secs * 1000 / TIMER_FREQ_MS;
-            CNT_CB.status[0] = RUNNING;
+            STEPPERS_CB.cnt[0] = 2 * secs * 1000 / TIMER_FREQ_MS;
+            STEPPERS_CB.status[0] = RUNNING;
             break;
         case 1:
+            /*
             if (!strcmp_P( strupr(s_action), PSTR("FW")) ) {
                 TMC2209_1_FORWARD();
             } else {
                 TMC2209_1_REVERSE();
             }
+             */
+            TMC2209_1_FORWARD();
             TMC2209_1_ENABLE();
-            CNT_CB.cnt[1] = secs * 1000 / TIMER_FREQ_MS;
-            CNT_CB.status[1] = RUNNING;
+            STEPPERS_CB.cnt[1] = 2 * secs * 1000 / TIMER_FREQ_MS;
+            STEPPERS_CB.status[1] = RUNNING;
             break;
         case 2:
+            /*
             if (!strcmp_P( strupr(s_action), PSTR("FW")) ) {
                 TMC2209_2_FORWARD();
             } else {
                 TMC2209_2_REVERSE();
             }
+             */
+            TMC2209_2_FORWARD();
             TMC2209_2_ENABLE();
-            CNT_CB.cnt[2] = secs * 1000 / TIMER_FREQ_MS;
-            CNT_CB.status[2] = RUNNING;
+            STEPPERS_CB.cnt[2] = 2 * secs * 1000 / TIMER_FREQ_MS;
+            STEPPERS_CB.status[2] = RUNNING;
             break;        
     }    
 }
@@ -250,24 +266,24 @@ void tmc2209_stop(uint8_t id)
     switch(id) {
         case 0:
             TMC2209_0_DISABLE();
-            CNT_CB.cnt[0] = 0;
-            CNT_CB.status[0] = STOPPED;
+            STEPPERS_CB.cnt[0] = 0;
+            STEPPERS_CB.status[0] = STOPPED;
             break;
         case 1:
             TMC2209_1_DISABLE();
-            CNT_CB.cnt[1] = 0;
-            CNT_CB.status[1] = STOPPED;
+            STEPPERS_CB.cnt[1] = 0;
+            STEPPERS_CB.status[1] = STOPPED;
             break;
         case 2:
             TMC2209_2_DISABLE();
-            CNT_CB.cnt[2] = 0;
-            CNT_CB.status[2] = STOPPED;
+            STEPPERS_CB.cnt[2] = 0;
+            STEPPERS_CB.status[2] = STOPPED;
             break;        
     }
 }
 //------------------------------------------------------------------------------
-void get_tmc2209_status(cnt_cb_t  *cnt_cb)
+void get_tmc2209_status(steppers_cb_t *steppers_cb)
 {
-    memcpy(cnt_cb, &CNT_CB, sizeof(cnt_cb_t));
+    memcpy(steppers_cb, &STEPPERS_CB, sizeof(steppers_cb_t));
 }
 //------------------------------------------------------------------------------

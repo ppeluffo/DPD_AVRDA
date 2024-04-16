@@ -217,15 +217,17 @@ bool pv_i2c_send_Address_packet(volatile TWI_t *twi, uint8_t slaveAddress, uint8
 char txbyte;	// (SLA_W/R) Send slave address
 bool ret_code = false;
 
-    if (debug ) {
-        xprintf_P(PSTR("pv_i2c_send_Address_packet.\r\n"));
-    }
 
 	if ( directionBit == I2C_DIRECTION_BIT_WRITE ) {
 		txbyte = slaveAddress & ~0x01;
 	} else {
 		txbyte = slaveAddress | 0x01;
 	}
+
+    if (debug ) {
+        xprintf_P(PSTR("pv_i2c_send_Address_packet [0x%02x]\r\n"), txbyte);
+    }
+
     // Esto genera un START y se envia el devAddress
 	twi->MADDR = txbyte;
 	if ( ! pv_i2c_waitForComplete( twi, debug ) ) {
@@ -246,7 +248,7 @@ bool ret_code = false;
 	// ACK o NACK ?
 	if ( (twi->MSTATUS & TWI_RXACK_bm) != 0 ) {
 		// NACK
-        xprintf("pvI2C_write_slave_address: NACK status=0x%02x\r\n", twi->MSTATUS );
+        xprintf("pv_i2c_send_Address_packet: NACK status=0x%02x\r\n", twi->MSTATUS );
 		goto i2c_exit;
 	} else {
 		// ACK
@@ -273,13 +275,15 @@ uint8_t txbyte;
 bool retS = false;
     
     // DEBUG
-    if ( debug ) {
-        xprintf_P(PSTR("pv_i2c_send_Data_packet start\r\n"));
-    }
+
 
 	// No hay datos para enviar: dummy write.
-	if ( length == 0 )
+	if ( length == 0 ) {
+            if ( debug ) {
+                xprintf_P(PSTR("pv_i2c_send_Data_packet start: 0 length.\r\n"));
+            }
 		return(true);
+    }
 
 	// Mando el buffer de datos. Debo recibir 0x28 (DATA_ACK) en c/u
 	for ( bytesWritten=0; bytesWritten < length; bytesWritten++ ) {

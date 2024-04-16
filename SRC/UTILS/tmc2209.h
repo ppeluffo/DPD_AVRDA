@@ -28,7 +28,12 @@ typedef enum { RUNNING=0, STOPPED } t_tmc2209_status;
 typedef struct {
     t_tmc2209_status status[3];
     uint32_t cnt[3];
-} cnt_cb_t;
+    bool enabled[3];
+    t_tmc2209_dir dir[3];
+    
+} steppers_cb_t;
+
+steppers_cb_t STEPPERS_CB;
 
 #define TMC2209_0_EN_PORT           PORTF
 #define TMC2209_0_EN_PIN_bm         PIN4_bm
@@ -70,10 +75,10 @@ typedef struct {
 #define CONFIG_TMC2209_0_STEP()     (TMC2209_0_STEP_PORT.DIR |= TMC2209_0_STEP_PIN_bm);
 #define CONFIG_TMC2209_0_DIR()      (TMC2209_0_DIR_PORT.DIR |= TMC2209_0_DIR_PIN_bm);
 
-#define TMC2209_0_DISABLE()     ( TMC2209_0_EN_PORT.OUT |= TMC2209_0_EN_PIN_bm )
-#define TMC2209_0_ENABLE()      ( TMC2209_0_EN_PORT.OUT &= ~TMC2209_0_EN_PIN_bm )
-#define TMC2209_0_FORWARD()     ( TMC2209_0_DIR_PORT.OUT |= TMC2209_0_DIR_PIN_bm )
-#define TMC2209_0_REVERSE()     ( TMC2209_0_DIR_PORT.OUT &= ~TMC2209_0_DIR_PIN_bm )
+#define TMC2209_0_DISABLE()     ( TMC2209_0_EN_PORT.OUT |= TMC2209_0_EN_PIN_bm ); STEPPERS_CB.enabled[0] = false;
+#define TMC2209_0_ENABLE()      ( TMC2209_0_EN_PORT.OUT &= ~TMC2209_0_EN_PIN_bm ); STEPPERS_CB.enabled[0] = true;
+#define TMC2209_0_FORWARD()     ( TMC2209_0_DIR_PORT.OUT |= TMC2209_0_DIR_PIN_bm ); STEPPERS_CB.dir[0] = DIR_FW;
+#define TMC2209_0_REVERSE()     ( TMC2209_0_DIR_PORT.OUT &= ~TMC2209_0_DIR_PIN_bm ); STEPPERS_CB.dir[0] = DIR_REV;
 #define TMC2209_0_STEP_ON()     ( TMC2209_0_STEP_PORT.OUT |= TMC2209_0_STEP_PIN_bm )
 #define TMC2209_0_STEP_OFF()    ( TMC2209_0_STEP_PORT.OUT &= ~TMC2209_0_STEP_PIN_bm )
 #define TMC2209_0_STEP_TOGGLE() ( TMC2209_0_STEP_PORT.OUT ^= 1UL << TMC2209_0_STEP_PIN_bp);
@@ -82,10 +87,10 @@ typedef struct {
 #define CONFIG_TMC2209_1_STEP()     (TMC2209_1_STEP_PORT.DIR |= TMC2209_1_STEP_PIN_bm);
 #define CONFIG_TMC2209_1_DIR()      (TMC2209_1_DIR_PORT.DIR |= TMC2209_1_DIR_PIN_bm);
 
-#define TMC2209_1_DISABLE()     ( TMC2209_1_EN_PORT.OUT |= TMC2209_1_EN_PIN_bm )
-#define TMC2209_1_ENABLE()      ( TMC2209_1_EN_PORT.OUT &= ~TMC2209_1_EN_PIN_bm )
-#define TMC2209_1_FORWARD()     ( TMC2209_1_DIR_PORT.OUT |= TMC2209_1_DIR_PIN_bm )
-#define TMC2209_1_REVERSE()     ( TMC2209_1_DIR_PORT.OUT &= ~TMC2209_1_DIR_PIN_bm )
+#define TMC2209_1_DISABLE()     ( TMC2209_1_EN_PORT.OUT |= TMC2209_1_EN_PIN_bm ); STEPPERS_CB.enabled[1] = false;
+#define TMC2209_1_ENABLE()      ( TMC2209_1_EN_PORT.OUT &= ~TMC2209_1_EN_PIN_bm ); STEPPERS_CB.enabled[1] = true;
+#define TMC2209_1_FORWARD()     ( TMC2209_1_DIR_PORT.OUT |= TMC2209_1_DIR_PIN_bm ); STEPPERS_CB.dir[1] = DIR_FW;
+#define TMC2209_1_REVERSE()     ( TMC2209_1_DIR_PORT.OUT &= ~TMC2209_1_DIR_PIN_bm ); STEPPERS_CB.dir[1] = DIR_REV;
 #define TMC2209_1_STEP_ON()     ( TMC2209_1_STEP_PORT.OUT |= TMC2209_1_STEP_PIN_bm )
 #define TMC2209_1_STEP_OFF()    ( TMC2209_1_STEP_PORT.OUT &= ~TMC2209_1_STEP_PIN_bm )
 #define TMC2209_1_STEP_TOGGLE() ( TMC2209_1_STEP_PORT.OUT ^= 1UL << TMC2209_1_STEP_PIN_bp);
@@ -94,10 +99,10 @@ typedef struct {
 #define CONFIG_TMC2209_2_STEP()     (TMC2209_2_STEP_PORT.DIR |= TMC2209_2_STEP_PIN_bm);
 #define CONFIG_TMC2209_2_DIR()      (TMC2209_2_DIR_PORT.DIR |= TMC2209_2_DIR_PIN_bm);
 
-#define TMC2209_2_DISABLE()     ( TMC2209_2_EN_PORT.OUT |= TMC2209_2_EN_PIN_bm )
-#define TMC2209_2_ENABLE()      ( TMC2209_2_EN_PORT.OUT &= ~TMC2209_2_EN_PIN_bm )
-#define TMC2209_2_FORWARD()     ( TMC2209_2_DIR_PORT.OUT |= TMC2209_2_DIR_PIN_bm )
-#define TMC2209_2_REVERSE()     ( TMC2209_2_DIR_PORT.OUT &= ~TMC2209_2_DIR_PIN_bm )
+#define TMC2209_2_DISABLE()     ( TMC2209_2_EN_PORT.OUT |= TMC2209_2_EN_PIN_bm ); STEPPERS_CB.enabled[2] = false;
+#define TMC2209_2_ENABLE()      ( TMC2209_2_EN_PORT.OUT &= ~TMC2209_2_EN_PIN_bm ); STEPPERS_CB.enabled[2] = true;
+#define TMC2209_2_FORWARD()     ( TMC2209_2_DIR_PORT.OUT |= TMC2209_2_DIR_PIN_bm ); STEPPERS_CB.dir[2] = DIR_FW;
+#define TMC2209_2_REVERSE()     ( TMC2209_2_DIR_PORT.OUT &= ~TMC2209_2_DIR_PIN_bm ); STEPPERS_CB.dir[2] = DIR_REV;
 #define TMC2209_2_STEP_ON()     ( TMC2209_2_STEP_PORT.OUT |= TMC2209_2_STEP_PIN_bm )
 #define TMC2209_2_STEP_OFF()    ( TMC2209_2_STEP_PORT.OUT &= ~TMC2209_2_STEP_PIN_bm )
 #define TMC2209_2_STEP_TOGGLE() ( TMC2209_2_STEP_PORT.OUT ^= 1UL << TMC2209_2_STEP_PIN_bp);
@@ -106,7 +111,7 @@ void TMC2209_init(void);
 bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs );
 void tmc2209_stop(uint8_t id);
 void tmc2209_run(uint8_t id, char *s_action, uint16_t secs);
-void get_tmc2209_status(cnt_cb_t  *cnt_cb);
+void get_tmc2209_status(steppers_cb_t *steppers_cb);
 
 #ifdef	__cplusplus
 }

@@ -84,9 +84,11 @@ extern "C" {
 #include "toyi_valves.h"
 #include "tmc2209.h"
 #include "opto.h"
+//#include "ads1115.h"
+#include "adc1115.h"
 
-#define FW_REV "0.0.1"
-#define FW_DATE "@ 20240313"
+#define FW_REV "1.0.0"
+#define FW_DATE "@ 20240416"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
