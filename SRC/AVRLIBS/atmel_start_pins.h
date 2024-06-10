@@ -18,9 +18,9 @@
  *
  * \param[in] pull_mode Pin pull mode
  */
-static inline void PF2_set_pull_mode(const enum port_pull_mode pull_mode)
+static inline void PA2_set_pull_mode(const enum port_pull_mode pull_mode)
 {
-	PORTF_set_pin_pull_mode(2, pull_mode);
+	PORTA_set_pin_pull_mode(2, pull_mode);
 }
 
 /**
@@ -34,9 +34,9 @@ static inline void PF2_set_pull_mode(const enum port_pull_mode pull_mode)
  *                      PORT_DIR_OFF = Disables the pin
  *                      (low power state)
  */
-static inline void PF2_set_dir(const enum port_dir dir)
+static inline void PA2_set_dir(const enum port_dir dir)
 {
-	PORTF_set_pin_dir(2, dir);
+	PORTA_set_pin_dir(2, dir);
 }
 
 /**
@@ -52,9 +52,9 @@ static inline void PF2_set_dir(const enum port_dir dir)
  *                PORT_ISC_INPUT_DISABLE_gc = Digital Input Buffer disabled
  *                PORT_ISC_LEVEL_gc         = Sense low Level
  */
-static inline void PF2_set_isc(const PORT_ISC_t isc)
+static inline void PA2_set_isc(const PORT_ISC_t isc)
 {
-	PORTF_pin_set_isc(2, isc);
+	PORTA_pin_set_isc(2, isc);
 }
 
 /**
@@ -65,9 +65,9 @@ static inline void PF2_set_isc(const PORT_ISC_t isc)
  * \param[in] inverted true  = I/O on PF2 is inverted
  *                     false = I/O on PF2 is not inverted
  */
-static inline void PF2_set_inverted(const bool inverted)
+static inline void PA2_set_inverted(const bool inverted)
 {
-	PORTF_pin_set_inverted(2, inverted);
+	PORTA_pin_set_inverted(2, inverted);
 }
 
 /**
@@ -78,9 +78,9 @@ static inline void PF2_set_inverted(const bool inverted)
  * \param[in] level true  = Pin level set to "high" state
  *                  false = Pin level set to "low" state
  */
-static inline void PF2_set_level(const bool level)
+static inline void PA2_set_level(const bool level)
 {
-	PORTF_set_pin_level(2, level);
+	PORTA_set_pin_level(2, level);
 }
 
 /**
@@ -88,9 +88,9 @@ static inline void PF2_set_level(const bool level)
  *
  * Toggle the pin level
  */
-static inline void PF2_toggle_level()
+static inline void PA2_toggle_level()
 {
-	PORTF_toggle_pin_level(2);
+	PORTA_toggle_pin_level(2);
 }
 
 /**
@@ -98,9 +98,9 @@ static inline void PF2_toggle_level()
  *
  * Reads the level on a pin
  */
-static inline bool PF2_get_level()
+static inline bool PA2_get_level()
 {
-	return PORTF_get_pin_level(2);
+	return PORTA_get_pin_level(2);
 }
 
 /**
@@ -111,9 +111,9 @@ static inline bool PF2_get_level()
  *
  * \param[in] pull_mode Pin pull mode
  */
-static inline void PF3_set_pull_mode(const enum port_pull_mode pull_mode)
+static inline void PA3_set_pull_mode(const enum port_pull_mode pull_mode)
 {
-	PORTF_set_pin_pull_mode(3, pull_mode);
+	PORTA_set_pin_pull_mode(3, pull_mode);
 }
 
 /**
@@ -127,9 +127,9 @@ static inline void PF3_set_pull_mode(const enum port_pull_mode pull_mode)
  *                      PORT_DIR_OFF = Disables the pin
  *                      (low power state)
  */
-static inline void PF3_set_dir(const enum port_dir dir)
+static inline void PA3_set_dir(const enum port_dir dir)
 {
-	PORTF_set_pin_dir(3, dir);
+	PORTA_set_pin_dir(3, dir);
 }
 
 /**
@@ -145,9 +145,9 @@ static inline void PF3_set_dir(const enum port_dir dir)
  *                PORT_ISC_INPUT_DISABLE_gc = Digital Input Buffer disabled
  *                PORT_ISC_LEVEL_gc         = Sense low Level
  */
-static inline void PF3_set_isc(const PORT_ISC_t isc)
+static inline void PA3_set_isc(const PORT_ISC_t isc)
 {
-	PORTF_pin_set_isc(3, isc);
+	PORTA_pin_set_isc(3, isc);
 }
 
 /**
@@ -158,9 +158,9 @@ static inline void PF3_set_isc(const PORT_ISC_t isc)
  * \param[in] inverted true  = I/O on PF3 is inverted
  *                     false = I/O on PF3 is not inverted
  */
-static inline void PF3_set_inverted(const bool inverted)
+static inline void PA3_set_inverted(const bool inverted)
 {
-	PORTF_pin_set_inverted(3, inverted);
+	PORTA_pin_set_inverted(3, inverted);
 }
 
 /**
@@ -171,9 +171,9 @@ static inline void PF3_set_inverted(const bool inverted)
  * \param[in] level true  = Pin level set to "high" state
  *                  false = Pin level set to "low" state
  */
-static inline void PF3_set_level(const bool level)
+static inline void PA3_set_level(const bool level)
 {
-	PORTF_set_pin_level(3, level);
+	PORTA_set_pin_level(3, level);
 }
 
 /**
@@ -181,9 +181,9 @@ static inline void PF3_set_level(const bool level)
  *
  * Toggle the pin level
  */
-static inline void PF3_toggle_level()
+static inline void PA3_toggle_level()
 {
-	PORTF_toggle_pin_level(3);
+	PORTA_toggle_pin_level(3);
 }
 
 /**
@@ -191,9 +191,9 @@ static inline void PF3_toggle_level()
  *
  * Reads the level on a pin
  */
-static inline bool PF3_get_level()
+static inline bool PA3_get_level()
 {
-	return PORTF_get_pin_level(3);
+	return PORTA_get_pin_level(3);
 }
 
 #endif /* ATMEL_START_PINS_H_INCLUDED */

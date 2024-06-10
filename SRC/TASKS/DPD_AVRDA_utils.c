@@ -43,7 +43,8 @@ int8_t CLKCTRL_init(void)
 {
 	// Configuro el clock para 24Mhz
 	
-	ccp_write_io((void *)&(CLKCTRL.OSCHFCTRLA), CLKCTRL_FREQSEL_24M_gc         /* 24 */
+	ccp_write_io((void *)&(CLKCTRL.OSCHFCTRLA), CLKCTRL_FRQSEL_24M_gc         /* 24 */
+                                                
 	| 0 << CLKCTRL_AUTOTUNE_bp /* Auto-Tune enable: disabled */
 	| 0 << CLKCTRL_RUNSTDBY_bp /* Run standby: disabled */);
 

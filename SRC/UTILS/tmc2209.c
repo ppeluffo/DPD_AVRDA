@@ -5,7 +5,7 @@ TimerHandle_t tmc2209_xTimer;
 StaticTimer_t tmc2209_xTimerBuffer;
 void tmc2209_TimerCallback( TimerHandle_t xTimer );
 
-#define TIMER_CALLBACK_MS  5
+#define TIMER_CALLBACK_MS  1
 #define TIMER_FREQ_MS   ( TIMER_CALLBACK_MS * 2 )
 
 //------------------------------------------------------------------------------
@@ -88,9 +88,63 @@ uint8_t i;
     
 }
 //------------------------------------------------------------------------------
-bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs )
+bool tmc2209_test( char *s_id, char *s_var1, char *s_var2, char *s_var3 )
 {
 
+    // test stepper {0,1,2} run secs
+    switch(atoi(s_id)) {
+        case 0:
+            if (!strcmp_P( strupr(s_var1), PSTR("RUN")) ) {
+                tmc2209_run(0, atoi(s_var2) );
+                return(true);
+            }
+
+            if (!strcmp_P( strupr(s_var1), PSTR("STOP")) ) {
+                tmc2209_stop(0);
+                return(true);
+            }     
+            
+            return(false);
+            break;
+            
+        case 1:
+            if (!strcmp_P( strupr(s_var1), PSTR("RUN")) ) {
+                tmc2209_run(1, atoi(s_var2) );
+                return(true);
+            }
+
+            if (!strcmp_P( strupr(s_var1), PSTR("STOP")) ) {
+                tmc2209_stop(1);
+                return(true);
+            }     
+            
+            return(false);
+            break;        
+ 
+        case 2:
+            if (!strcmp_P( strupr(s_var1), PSTR("RUN")) ) {
+                tmc2209_run(2, atoi(s_var2) );
+                return(true);
+            }
+
+            if (!strcmp_P( strupr(s_var1), PSTR("STOP")) ) {
+                tmc2209_stop(2);
+                return(true);
+            }     
+            
+            return(false);
+            break;  
+    }
+
+    return(false);
+    
+}
+//------------------------------------------------------------------------------
+bool tmc2209_test1( char *s_id, char *s_opt, char *s_action, char *s_secs )
+{
+
+uint16_t seconds = atoi(s_action);
+    
  	// tmc {id} {en|dir} {on|off}
     switch(atoi(s_id)) {
         case 0:
@@ -119,7 +173,8 @@ bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs )
             }
             
             if (!strcmp_P( strupr(s_opt), PSTR("RUN")) ) {
-                tmc2209_run(0, s_action, atoi(s_secs));
+                //tmc2209_run(0, s_action, atoi(s_secs));
+                tmc2209_run1(0, NULL, seconds );
                 return(true);
             }
 
@@ -157,7 +212,8 @@ bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs )
             }
              
             if (!strcmp_P( strupr(s_opt), PSTR("RUN")) ) {
-                tmc2209_run(1, s_action, atoi(s_secs));
+                //tmc2209_run(1, s_action, atoi(s_secs));
+                tmc2209_run1(1, NULL, seconds );
                 return(true);
             }
 
@@ -195,7 +251,8 @@ bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs )
             }
             
             if (!strcmp_P( strupr(s_opt), PSTR("RUN")) ) {
-                tmc2209_run(2, s_action, atoi(s_secs));
+                //tmc2209_run(2, s_action, atoi(s_secs));
+                tmc2209_run1(2, NULL, seconds );
                 return(true);
             }
 
@@ -212,12 +269,16 @@ bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs )
     
 }
 //------------------------------------------------------------------------------
-void tmc2209_run(uint8_t id, char *s_action, uint16_t secs)
+void tmc2209_run1(uint8_t id, char *s_action, uint16_t secs)
 {
     /*
      * En el DPD siempre se mueven FORWARD !!!
      * No importa s_action
      */
+    
+    xprintf_P(PSTR("DEBUG: seconds = %d\r\n"), secs);
+
+        
     switch(id) {
         case 0:
             /*
@@ -230,6 +291,7 @@ void tmc2209_run(uint8_t id, char *s_action, uint16_t secs)
             TMC2209_0_FORWARD();
             TMC2209_0_ENABLE();
             STEPPERS_CB.cnt[0] = 2 * secs * 1000 / TIMER_FREQ_MS;
+            xprintf_P(PSTR("DEBUG: CB0 = %d\r\n"), STEPPERS_CB.cnt[0] );
             STEPPERS_CB.status[0] = RUNNING;
             break;
         case 1:
@@ -243,6 +305,7 @@ void tmc2209_run(uint8_t id, char *s_action, uint16_t secs)
             TMC2209_1_FORWARD();
             TMC2209_1_ENABLE();
             STEPPERS_CB.cnt[1] = 2 * secs * 1000 / TIMER_FREQ_MS;
+            //xprintf_P(PSTR("DEBUG: CB1 = %d\r\n"), STEPPERS_CB.cnt[1] );
             STEPPERS_CB.status[1] = RUNNING;
             break;
         case 2:
@@ -256,11 +319,51 @@ void tmc2209_run(uint8_t id, char *s_action, uint16_t secs)
             TMC2209_2_FORWARD();
             TMC2209_2_ENABLE();
             STEPPERS_CB.cnt[2] = 2 * secs * 1000 / TIMER_FREQ_MS;
+            //xprintf_P(PSTR("DEBUG: CB2 = %d\r\n"), STEPPERS_CB.cnt[2] );
             STEPPERS_CB.status[2] = RUNNING;
             break;        
     }    
 }
 //------------------------------------------------------------------------------
+void tmc2209_run(uint8_t id, uint16_t secs)
+{
+    /*
+     * En el DPD siempre se mueven FORWARD !!!
+     * No importa s_action
+     */
+    
+    //xprintf_P(PSTR("DEBUG: ID=%d, seconds = %d\r\n"), id, secs);
+
+float counter = 0.0;
+    
+    counter = 2.0 * secs * 1000 / TIMER_FREQ_MS;
+    
+    switch(id) {
+        case 0:
+            TMC2209_0_FORWARD();
+            TMC2209_0_ENABLE();
+            STEPPERS_CB.cnt[0] = (uint32_t)counter;
+            //xprintf_P(PSTR("DEBUG: CB0 = %lu\r\n"), STEPPERS_CB.cnt[0] );
+            STEPPERS_CB.status[0] = RUNNING;
+            break;
+        case 1:
+            TMC2209_1_FORWARD();
+            TMC2209_1_ENABLE();
+            STEPPERS_CB.cnt[1] = (uint32_t)counter;
+            //xprintf_P(PSTR("DEBUG: CB1 = %d\r\n"), STEPPERS_CB.cnt[1] );
+            STEPPERS_CB.status[1] = RUNNING;
+            break;
+        case 2:
+            TMC2209_2_FORWARD();
+            TMC2209_2_ENABLE();
+            STEPPERS_CB.cnt[2] = (uint32_t)counter;
+            //xprintf_P(PSTR("DEBUG: CB2 = %d\r\n"), STEPPERS_CB.cnt[2] );
+            STEPPERS_CB.status[2] = RUNNING;
+            break;        
+    }    
+}
+//------------------------------------------------------------------------------
+
 void tmc2209_stop(uint8_t id)
 {
     switch(id) {

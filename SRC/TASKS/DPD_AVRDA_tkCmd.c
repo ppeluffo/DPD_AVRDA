@@ -11,6 +11,10 @@ static void cmdReadFunction(void);
 static void cmdConfigFunction(void);
 static void cmdTestFunction(void);
 
+static void cmdValveFunction(void);
+static void cmdOptoFunction(void);
+static void cmdPumpFunction(void);
+
 static void pv_snprintfP_OK(void );
 static void pv_snprintfP_ERR(void );
 
@@ -44,6 +48,10 @@ uint8_t c = 0;
     FRTOS_CMD_register( "config", cmdConfigFunction );
     FRTOS_CMD_register( "test", cmdTestFunction );
     
+    FRTOS_CMD_register( "valve", cmdValveFunction );
+    FRTOS_CMD_register( "opto", cmdOptoFunction );
+    FRTOS_CMD_register( "pump", cmdPumpFunction );
+    
     xprintf_P(PSTR("Starting tkCmd..\r\n" ));
     xprintf_P(PSTR("Spymovil %s %s %s %s \r\n") , HW_MODELO, FRTOS_VERSION, FW_REV, FW_DATE);
       
@@ -65,18 +73,153 @@ uint8_t c = 0;
 	}    
 }
 //------------------------------------------------------------------------------
+static void cmdHelpFunction(void)
+{
+
+    FRTOS_CMD_makeArgv();
+        
+    if ( !strcmp_P( strupr(argv[1]), PSTR("WRITE"))) {
+		xprintf_P( PSTR("-write:\r\n"));
+        xprintf_P( PSTR("  (ee,nvmee,rtcram) {pos string} {debug}\r\n"));
+        xprintf_P( PSTR("  rtc YYMMDDhhmm\r\n"));
+        
+    }  else if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
+		xprintf_P( PSTR("-read:\r\n"));
+        xprintf_P( PSTR("  (ee,nvmee,rtcram) {pos} {lenght} {debug}\r\n"));
+        xprintf_P( PSTR("  avrid,rtc {long,short}\r\n"));
+        
+    }  else if ( !strcmp_P( strupr(argv[1]), PSTR("CONFIG"))) {
+		xprintf_P( PSTR("-config:\r\n"));
+        xprintf_P( PSTR("  save, load\r\n"));
+        
+    	// HELP RESET
+	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
+		xprintf_P( PSTR("-reset\r\n"));
+        xprintf_P( PSTR("  memory {soft|hard}\r\n"));
+		return;
+        
+    } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
+		xprintf_P( PSTR("-test\r\n"));
+        xprintf_P( PSTR("  valve {0,1,2} {open|close}\r\n"));
+        xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
+        xprintf_P( PSTR("  stepper {0,1,2} run secs\r\n"));
+        //xprintf_P( PSTR("                  run {fw|rev} secs\r\n"));
+        //xprintf_P( PSTR("  stepper {0,1,2} {en|dir} {on|off}\r\n"));
+        //xprintf_P( PSTR("                  run {fw|rev} secs\r\n"));
+        xprintf_P( PSTR("                  stop\r\n"));
+        xprintf_P( PSTR("  opto {on|off}\r\n"));
+        xprintf_P( PSTR("  adc1115 {init,start,status,read,rse,mread}\r\n"));
+        xprintf_P( PSTR("  kill {wan,sys}\r\n"));
+        return;
+       
+    } else if (!strcmp_P( strupr(argv[1]), PSTR("VALVE"))) {
+        xprintf_P( PSTR("-valve {0,1,2} {open|close}\r\n"));
+        return;
+        
+    } else if (!strcmp_P( strupr(argv[1]), PSTR("OPTO"))) {
+        xprintf_P( PSTR("-opto {on|off}\r\n"));
+        xprintf_P( PSTR("      read N\r\n"));
+
+        return;
+
+    } else if (!strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {
+        xprintf_P( PSTR("-pump {0,1,2} run secs\r\n"));
+        xprintf_P( PSTR("              stop\r\n"));
+        return;
+        
+    }  else {
+        // HELP GENERAL
+        xprintf("Available commands are:\r\n");
+        xprintf("-cls\r\n");
+        xprintf("-help\r\n");
+        xprintf("-status\r\n");
+        xprintf("-reset\r\n");
+        xprintf("-config...\r\n");
+        xprintf("-write...\r\n");
+        xprintf("-read...\r\n");
+        xprintf("-test...\r\n");
+        xprintf("*valve...\r\n");
+        xprintf("*opto...\r\n");
+        xprintf("*pump...\r\n");
+       
+    }
+   
+	xprintf("Exit help \r\n");
+
+}
+//------------------------------------------------------------------------------
+static void cmdValveFunction(void)
+{
+    // valve {0,1,2} {open|close}
+ 
+    FRTOS_CMD_makeArgv();
+    
+    valve_tests( argv[1], argv[2]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        
+}
+//------------------------------------------------------------------------------
+static void cmdOptoFunction(void)
+{
+    // opto {on|off}
+    //      read N
+    
+   
+float res;
+float res_mv = 0.0;
+ 
+    FRTOS_CMD_makeArgv();
+    
+    if ( !strcmp_P( strupr(argv[1]), PSTR("ON"))) {
+        opto_test( argv[1] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+
+    if ( !strcmp_P( strupr(argv[1]), PSTR("OFF"))) {
+        opto_test( argv[1] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+    
+    if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
+        res = ADC1115_multiple_read(atoi(argv[2]));
+        xprintf_P(PSTR("RES=%0.3f\r\n"),res );
+        res_mv = 0.125 * res;
+        xprintf_P(PSTR("RES_mv=%.3f\r\n"),res_mv );
+        pv_snprintfP_OK();
+        return;
+    }
+
+    if ( !strcmp_P( strupr(argv[1]), PSTR("MVREAD"))) {
+        res = ADC1115_multiple_read_mV(atoi(argv[2]));
+        xprintf_P(PSTR("RES= %lu\r\n"),res );
+        pv_snprintfP_OK();
+        return;
+    }
+    
+    
+}
+//------------------------------------------------------------------------------
+static void cmdPumpFunction(void)
+{
+    // pump {0,1,2} run secs
+    // pump {0,1,2} stop
+    FRTOS_CMD_makeArgv();
+    tmc2209_test( argv[1], argv[2], argv[3], argv[4] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+}
+//------------------------------------------------------------------------------
 static void cmdTestFunction(void)
 {
 
 uint16_t res;
-    
+float volts = 0.0;
+
     FRTOS_CMD_makeArgv();
-   
+ 
     // test adc1115 {init,start,status,read}
     if ( !strcmp_P( strupr(argv[1]), PSTR("ADC1115"))) {
         
         if ( !strcmp_P( strupr(argv[2]), PSTR("INIT"))) {
             ADC1115_init();
+            //ADC_setup();
             pv_snprintfP_OK();
             return;
         }
@@ -99,7 +242,9 @@ uint16_t res;
         
         if ( !strcmp_P( strupr(argv[2]), PSTR("READ"))) {
             res = ADC1115_get_conversion_result();
+            //volts = ADC_readChannel(ADS1115_COMP_0_GND);
             xprintf_P(PSTR("RES=0x%04x (%u)\r\n"),res, res );
+            //xprintf_P(PSTR("VOLTS=%f\r\n"),volts );
             pv_snprintfP_OK();
             return;
         }
@@ -144,61 +289,6 @@ uint16_t res;
     pv_snprintfP_ERR();
     return;
        
-}
-//------------------------------------------------------------------------------
-static void cmdHelpFunction(void)
-{
-
-    FRTOS_CMD_makeArgv();
-        
-    if ( !strcmp_P( strupr(argv[1]), PSTR("WRITE"))) {
-		xprintf_P( PSTR("-write:\r\n"));
-        xprintf_P( PSTR("  (ee,nvmee,rtcram) {pos string} {debug}\r\n"));
-        xprintf_P( PSTR("  rtc YYMMDDhhmm\r\n"));
-        
-    }  else if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
-		xprintf_P( PSTR("-read:\r\n"));
-        xprintf_P( PSTR("  (ee,nvmee,rtcram) {pos} {lenght} {debug}\r\n"));
-        xprintf_P( PSTR("  avrid,rtc {long,short}\r\n"));
-        
-    }  else if ( !strcmp_P( strupr(argv[1]), PSTR("CONFIG"))) {
-		xprintf_P( PSTR("-config:\r\n"));
-        xprintf_P( PSTR("  save, load\r\n"));
-        
-    	// HELP RESET
-	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
-		xprintf_P( PSTR("-reset\r\n"));
-        xprintf_P( PSTR("  memory {soft|hard}\r\n"));
-		return;
-        
-    } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
-		xprintf_P( PSTR("-test\r\n"));
-        xprintf_P( PSTR("  valve {0,1,2} {open|close}\r\n"));
-        xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
-        xprintf_P( PSTR("  stepper {0,1,2} {en|dir} {on|off}\r\n"));
-        xprintf_P( PSTR("                  run {fw|rev} secs\r\n"));
-        xprintf_P( PSTR("                  stop\r\n"));
-        xprintf_P( PSTR("  opto {on|off}\r\n"));
-        xprintf_P( PSTR("  adc1115 {init,start,status,read,rse,mread}\r\n"));
-        xprintf_P( PSTR("  kill {wan,sys}\r\n"));
-        return;
-        
-    }  else {
-        // HELP GENERAL
-        xprintf("Available commands are:\r\n");
-        xprintf("-cls\r\n");
-        xprintf("-help\r\n");
-        xprintf("-status\r\n");
-        xprintf("-reset\r\n");
-        xprintf("-config...\r\n");
-        xprintf("-write...\r\n");
-        xprintf("-read...\r\n");
-        xprintf("-test...\r\n");
-       
-    }
-   
-	xprintf("Exit help \r\n");
-
 }
 //------------------------------------------------------------------------------
 static void cmdReadFunction(void)
@@ -279,7 +369,7 @@ uint8_t i;
 
     xprintf("Spymovil %s %s TYPE=%s, VER=%s %s \r\n" , HW_MODELO, FRTOS_VERSION, FW_TYPE, FW_REV, FW_DATE);
       
-    xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
+ //D   xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
     
     xprintf_P(PSTR("Valves:\r\n"));
     get_valve_status(&vstatus);
@@ -322,9 +412,9 @@ uint8_t i;
          */
 
         if ( steppers_cb.status[i] == RUNNING ) {
-            xprintf_P(PSTR("running, %lu\r\n"), i, steppers_cb.cnt[i]);
+            xprintf_P(PSTR("running, %lu\r\n"), steppers_cb.cnt[i]);
         } else {
-            xprintf_P(PSTR("stopped\r\n"), i);
+            xprintf_P(PSTR("stopped\r\n"));
         }
     }
     

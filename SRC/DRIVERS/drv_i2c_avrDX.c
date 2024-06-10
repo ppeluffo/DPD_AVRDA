@@ -5,6 +5,7 @@
 #define I2C_TIMEOUT 10000
 
 #define TWI_BAUD(F_SCL, T_RISE) ((((((float)4000000 / (float)F_SCL)) - 10 - ((float)4000000 * T_RISE / 1000000))) / 2)
+//#define TWI_BAUD(F_SCL, T_RISE) ((((((float)24000000 / (float)F_SCL)) - 10 - ((float)24000000 * T_RISE / 1000000))) / 2)
 
 
 bool pv_i2c_send_Address_packet( volatile TWI_t *twi, uint8_t slaveAddress, uint8_t directionBit, bool debug);
@@ -155,17 +156,17 @@ i2c_quit:
 void drv_I2C_init( volatile TWI_t *twi, bool debug )
 {
     
-	PF3_set_level(false);
-	PF3_set_dir(PORT_DIR_OUT);
-	PF3_set_pull_mode(PORT_PULL_UP);
-	PF3_set_inverted(false);
-	PF3_set_isc(PORT_ISC_INTDISABLE_gc);
+	PA3_set_level(false);
+	PA3_set_dir(PORT_DIR_OUT);
+	PA3_set_pull_mode(PORT_PULL_UP);
+	PA3_set_inverted(false);
+	PA3_set_isc(PORT_ISC_INTDISABLE_gc);
 
-	PF2_set_level(false);
-	PF2_set_dir(PORT_DIR_OUT);
-	PF2_set_pull_mode(PORT_PULL_UP);
-	PF2_set_inverted(false);
-	PF2_set_isc(PORT_ISC_INTDISABLE_gc);
+	PA2_set_level(false);
+	PA2_set_dir(PORT_DIR_OUT);
+	PA2_set_pull_mode(PORT_PULL_UP);
+	PA2_set_inverted(false);
+	PA2_set_isc(PORT_ISC_INTDISABLE_gc);
 
 	// set i2c bit rate to 100KHz
 	twi->MBAUD = (uint8_t)TWI_BAUD(100000, 0);

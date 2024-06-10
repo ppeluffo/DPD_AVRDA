@@ -88,7 +88,7 @@ extern "C" {
 #include "adc1115.h"
 
 #define FW_REV "1.0.0"
-#define FW_DATE "@ 20240416"
+#define FW_DATE "@ 20240610"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"

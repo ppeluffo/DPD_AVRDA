@@ -21,6 +21,7 @@ extern "C" {
 #include <avr/pgmspace.h>
 #include "stdlib.h"   
 #include "string.h"
+#include "xprintf.h"
     
 typedef enum { DIR_FW=0, DIR_REV } t_tmc2209_dir;
 typedef enum { RUNNING=0, STOPPED } t_tmc2209_status;
@@ -108,9 +109,11 @@ steppers_cb_t STEPPERS_CB;
 #define TMC2209_2_STEP_TOGGLE() ( TMC2209_2_STEP_PORT.OUT ^= 1UL << TMC2209_2_STEP_PIN_bp);
 
 void TMC2209_init(void);
-bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs );
+//bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs );
+bool tmc2209_test( char *s_id, char *s_var1, char *s_var2, char *s_var3 );
 void tmc2209_stop(uint8_t id);
-void tmc2209_run(uint8_t id, char *s_action, uint16_t secs);
+//void tmc2209_run(uint8_t id, char *s_action, uint16_t secs);
+void tmc2209_run(uint8_t id, uint16_t secs);
 void get_tmc2209_status(steppers_cb_t *steppers_cb);
 
 #ifdef	__cplusplus

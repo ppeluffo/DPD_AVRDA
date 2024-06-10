@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+#include <util/delay.h>
 #include "frtos-io.h"
 #include "stdint.h"
 #include "i2c.h"
@@ -124,6 +125,7 @@ extern "C" {
     
     
 int8_t ADC1115_init(void);
+void ADC1115_get_config(bool debug);
 void ADC1115_start_conversion(void);
 bool ADC1115_is_conversion_done(void);
 uint16_t ADC1115_get_conversion_result(void);
@@ -133,7 +135,9 @@ int16_t ADC1115_write( uint16_t wrAddress, char *data, uint8_t length, bool debu
 int16_t ADC1115_test_write ( char *rconf_val_str );
 int16_t ADC1115_test_read ( char *regs );
 uint16_t ADC1115_read_single_ended(void);
-uint32_t ADC1115_multiple_read(uint8_t times);
+uint16_t ADC1115_read_single_ended_mV(void);
+float ADC1115_multiple_read(uint8_t times);
+uint32_t ADC1115_multiple_read_mV(uint8_t times);
 
 #ifdef	__cplusplus
 }

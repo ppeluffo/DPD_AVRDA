@@ -8,7 +8,7 @@
 
 #include "DPD_AVRDA.h"
 
-#define TKCTL_DELAY_S   5
+#define TKCTL_DELAY_S   1
 
 void sys_watchdog_check(void);
 void sys_daily_reset(void);
@@ -20,6 +20,7 @@ void tkCtl(void * pvParameters)
 	// Esta es la primer tarea que arranca.
 
 ( void ) pvParameters;
+//uint16_t a;
 
 	vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     xprintf_P(PSTR("Starting tkCtl..\r\n"));
@@ -27,9 +28,11 @@ void tkCtl(void * pvParameters)
     WDG_INIT(); // Pone todos los bits habilitados en 1
      
 	// Arranco el RTC. Si hay un problema lo inicializo.
-    RTC_init();
+ //D   RTC_init();
 
     vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
+    
+    ADC1115_init();
     
     // Por ultimo habilito a todas las otras tareas a arrancar
     starting_flag = true;
@@ -42,7 +45,7 @@ void tkCtl(void * pvParameters)
         led_flash();
         sys_watchdog_check();
         sys_daily_reset();
-        // xfprintf_P( fdXCOMMS, PSTR("The quick brown fox jumps over the lazy dog = %d\r\n"),a++);
+        //xprintf_P( PSTR("The quick brown fox jumps over the lazy dog = %d\r\n"),a++);
         
 	}
 }
