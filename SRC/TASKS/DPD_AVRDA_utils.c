@@ -25,7 +25,11 @@ void system_init()
     XPRINTF_init();
     TOYI_VALVES_init();
     CNT0_CONFIG();
-    TMC2209_init();
+    
+    pump0_init();
+    pump1_init();
+    pump2_init();
+    
     CONFIG_OPTO();
     I2C_init();
         
@@ -76,21 +80,60 @@ void u_config_default(void)
 {
 
     // Configuro a default todas las configuraciones locales
-    // y luego actualizo el systemConf
-        
+    pump_config_default();
+    //
 }
 //------------------------------------------------------------------------------
 bool u_save_config_in_NVM(void)
 {
-   
+   /*
+    * Leo los valores de las freq.de las pumps y actualizao el systemVars
+    * para luego guardrlo en la NVM
+    
+    */
+    
+int8_t retVal;
+uint8_t cks;
+
+    systemVars.pump_freq[0] = pump0.freq;
+    systemVars.pump_freq[1] = pump1.freq;
+    systemVars.pump_freq[2] = pump2.freq;
+
+    cks = checksum ( (uint8_t *)&systemVars, ( sizeof(systemVars) - 1));
+    systemVars.checksum = cks;
+
+    retVal = NVMEE_write( 0x00, (char *)&systemVars, sizeof(systemVars) );
+    xprintf_P(PSTR("SAVE NVM: memblock size = %d\r\n"), sizeof(systemVars));    
+    //xprintf_P(PSTR("DEBUG: Save in NVM OK\r\n"));
+    
+    if (retVal == -1 )
+        return(false);
     
     return(true);
+
    
 }
 //------------------------------------------------------------------------------
 bool u_load_config_from_NVM(void)
 {
     
+uint8_t rd_cks, calc_cks;
+
+    xprintf_P(PSTR("NVM: memblock size=%d\r\n"), sizeof(systemVars));
+
+    memset( &systemVars, '\0', sizeof(systemVars));
+    
+    NVMEE_read( 0x00, (char *)&systemVars, sizeof(systemVars) );
+    rd_cks = systemVars.checksum;
+        
+    calc_cks = checksum ( (uint8_t *)&systemVars, ( sizeof(systemVars) - 1));
+    
+    if ( calc_cks != rd_cks ) {
+		xprintf_P( PSTR("ERROR: Checksum systemConf failed: calc[0x%0x], read[0x%0x]\r\n"), calc_cks, rd_cks );
+		return(false);
+	}
+
+    pump_update_config();
     return(true);
 }
 //------------------------------------------------------------------------------

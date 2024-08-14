@@ -87,8 +87,8 @@ extern "C" {
 //#include "ads1115.h"
 #include "adc1115.h"
 
-#define FW_REV "1.0.0"
-#define FW_DATE "@ 20240610"
+#define FW_REV "1.0.3a"
+#define FW_DATE "@ 20240814"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -125,8 +125,11 @@ void tkSys(void * pvParameters);
 bool starting_flag;
 
 // Estructura que tiene el valor de las medidas en el intervalo de poleo
+
 struct {   
     bool debug;
+    uint16_t pump_freq[MAX_PUMPS];
+    uint8_t checksum;
 } systemVars;
 
 void system_init();

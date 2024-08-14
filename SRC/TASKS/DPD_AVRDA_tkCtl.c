@@ -31,6 +31,13 @@ void tkCtl(void * pvParameters)
  //D   RTC_init();
 
     vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
+
+    // Leo la configuracion de EE en systemConf
+    xprintf_P(PSTR("Loading config...\r\n"));
+    if ( ! u_load_config_from_NVM())  {
+       xprintf_P(PSTR("Loading config default..\r\n"));
+       u_config_default();
+    }
     
     ADC1115_init();
     

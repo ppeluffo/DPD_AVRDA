@@ -26,95 +26,109 @@ extern "C" {
 typedef enum { DIR_FW=0, DIR_REV } t_tmc2209_dir;
 typedef enum { RUNNING=0, STOPPED } t_tmc2209_status;
 
+#define MAX_PUMPS 3
+
 typedef struct {
-    t_tmc2209_status status[3];
-    uint32_t cnt[3];
-    bool enabled[3];
-    t_tmc2209_dir dir[3];
-    
-} steppers_cb_t;
+    uint16_t freq;
+    uint32_t ticks;
+    bool enabled;
+    bool running;
+} pump_CB_t;
 
-steppers_cb_t STEPPERS_CB;
+pump_CB_t pump0, pump1, pump2;
 
-#define TMC2209_0_EN_PORT           PORTF
-#define TMC2209_0_EN_PIN_bm         PIN4_bm
-#define TMC2209_0_EN_PIN_bp         PIN4_bp
+#define PUMP0_EN_PORT           PORTF
+#define PUMP0_EN_PIN_bm         PIN4_bm
+#define PUMP0_EN_PIN_bp         PIN4_bp
 
-#define TMC2209_0_STEP_PORT         PORTF
-#define TMC2209_0_STEP_PIN_bm       PIN3_bm
-#define TMC2209_0_STEP_PIN_bp       PIN3_bp
+#define PUMP0_STEP_PORT         PORTF
+#define PUMP0_STEP_PIN_bm       PIN3_bm
+#define PUMP0_STEP_PIN_bp       PIN3_bp
 
-#define TMC2209_0_DIR_PORT          PORTF
-#define TMC2209_0_DIR_PIN_bm        PIN2_bm
-#define TMC2209_0_DIR_PIN_bp        PIN2_bp
+#define PUMP0_DIR_PORT          PORTF
+#define PUMP0_DIR_PIN_bm        PIN2_bm
+#define PUMP0_DIR_PIN_bp        PIN2_bp
 
-#define TMC2209_1_EN_PORT           PORTF
-#define TMC2209_1_EN_PIN_bm         PIN1_bm
-#define TMC2209_1_EN_PIN_bp         PIN1_bp
+#define PUMP0_EN_CONFIG()       (PUMP0_EN_PORT.DIR |= PUMP0_EN_PIN_bm)
+#define PUMP0_STEP_CONFIG()     (PUMP0_STEP_PORT.DIR |= PUMP0_STEP_PIN_bm)
+#define PUMP0_DIR_CONFIG()      (PUMP0_DIR_PORT.DIR |= PUMP0_DIR_PIN_bm)
 
-#define TMC2209_1_STEP_PORT         PORTF
-#define TMC2209_1_STEP_PIN_bm       PIN0_bm
-#define TMC2209_1_STEP_PIN_bp       PIN0_bp
+#define PUMP0_DISABLE()     ( PUMP0_EN_PORT.OUT |= PUMP0_EN_PIN_bm )
+#define PUMP0_ENABLE()      ( PUMP0_EN_PORT.OUT &= ~PUMP0_EN_PIN_bm )
+#define PUMP0_FORWARD()     ( PUMP0_DIR_PORT.OUT |= PUMP0_DIR_PIN_bm )
+#define PUMP0_REVERSE()     ( PUMP0_DIR_PORT.OUT &= ~PUMP0_DIR_PIN_bm )
+#define PUMP0_STEP_ON()     ( PUMP0_STEP_PORT.OUT |= PUMP0_STEP_PIN_bm )
+#define PUMP0_STEP_OFF()    ( PUMP0_STEP_PORT.OUT &= ~PUMP0_STEP_PIN_bm )
+#define PUMP0_STEP_TOGGLE() ( PUMP0_STEP_PORT.OUT ^= 1UL << PUMP0_STEP_PIN_bp);
 
-#define TMC2209_1_DIR_PORT          PORTE
-#define TMC2209_1_DIR_PIN_bm        PIN7_bm
-#define TMC2209_1_DIR_PIN_bp        PIN7_bp
+#define PUMP1_EN_PORT           PORTF
+#define PUMP1_EN_PIN_bm         PIN1_bm
+#define PUMP1_EN_PIN_bp         PIN1_bp
 
-#define TMC2209_2_EN_PORT           PORTD
-#define TMC2209_2_EN_PIN_bm         PIN7_bm
-#define TMC2209_2_EN_PIN_bp         PIN7_bp
+#define PUMP1_STEP_PORT         PORTF
+#define PUMP1_STEP_PIN_bm       PIN0_bm
+#define PUMP1_STEP_PIN_bp       PIN0_bp
 
-#define TMC2209_2_STEP_PORT         PORTD
-#define TMC2209_2_STEP_PIN_bm       PIN6_bm
-#define TMC2209_2_STEP_PIN_bp       PIN6_bp
+#define PUMP1_DIR_PORT          PORTE
+#define PUMP1_DIR_PIN_bm        PIN7_bm
+#define PUMP1_DIR_PIN_bp        PIN7_bp
 
-#define TMC2209_2_DIR_PORT          PORTD
-#define TMC2209_2_DIR_PIN_bm        PIN5_bm
-#define TMC2209_2_DIR_PIN_bp        PIN5_bp
+#define PUMP1_EN_CONFIG()       (PUMP1_EN_PORT.DIR |= PUMP1_EN_PIN_bm);
+#define PUMP1_STEP_CONFIG()     (PUMP1_STEP_PORT.DIR |= PUMP1_STEP_PIN_bm);
+#define PUMP1_DIR_CONFIG()      (PUMP1_DIR_PORT.DIR |= PUMP1_DIR_PIN_bm);
 
-#define CONFIG_TMC2209_0_EN()       (TMC2209_0_EN_PORT.DIR |= TMC2209_0_EN_PIN_bm);
-#define CONFIG_TMC2209_0_STEP()     (TMC2209_0_STEP_PORT.DIR |= TMC2209_0_STEP_PIN_bm);
-#define CONFIG_TMC2209_0_DIR()      (TMC2209_0_DIR_PORT.DIR |= TMC2209_0_DIR_PIN_bm);
+#define PUMP1_DISABLE()     ( PUMP1_EN_PORT.OUT |= PUMP1_EN_PIN_bm )
+#define PUMP1_ENABLE()      ( PUMP1_EN_PORT.OUT &= ~PUMP1_EN_PIN_bm )
+#define PUMP1_FORWARD()     ( PUMP1_DIR_PORT.OUT |= PUMP1_DIR_PIN_bm )
+#define PUMP1_REVERSE()     ( PUMP1_DIR_PORT.OUT &= ~PUMP1_DIR_PIN_bm )
+#define PUMP1_STEP_ON()     ( PUMP1_STEP_PORT.OUT |= PUMP1_STEP_PIN_bm )
+#define PUMP1_STEP_OFF()    ( PUMP1_STEP_PORT.OUT &= ~PUMP1_STEP_PIN_bm )
+#define PUMP1_STEP_TOGGLE() ( PUMP1_STEP_PORT.OUT ^= 1UL << PUMP1_STEP_PIN_bp)
 
-#define TMC2209_0_DISABLE()     ( TMC2209_0_EN_PORT.OUT |= TMC2209_0_EN_PIN_bm ); STEPPERS_CB.enabled[0] = false;
-#define TMC2209_0_ENABLE()      ( TMC2209_0_EN_PORT.OUT &= ~TMC2209_0_EN_PIN_bm ); STEPPERS_CB.enabled[0] = true;
-#define TMC2209_0_FORWARD()     ( TMC2209_0_DIR_PORT.OUT |= TMC2209_0_DIR_PIN_bm ); STEPPERS_CB.dir[0] = DIR_FW;
-#define TMC2209_0_REVERSE()     ( TMC2209_0_DIR_PORT.OUT &= ~TMC2209_0_DIR_PIN_bm ); STEPPERS_CB.dir[0] = DIR_REV;
-#define TMC2209_0_STEP_ON()     ( TMC2209_0_STEP_PORT.OUT |= TMC2209_0_STEP_PIN_bm )
-#define TMC2209_0_STEP_OFF()    ( TMC2209_0_STEP_PORT.OUT &= ~TMC2209_0_STEP_PIN_bm )
-#define TMC2209_0_STEP_TOGGLE() ( TMC2209_0_STEP_PORT.OUT ^= 1UL << TMC2209_0_STEP_PIN_bp);
+#define PUMP2_EN_PORT           PORTD
+#define PUMP2_EN_PIN_bm         PIN7_bm
+#define PUMP2_EN_PIN_bp         PIN7_bp
 
-#define CONFIG_TMC2209_1_EN()       (TMC2209_1_EN_PORT.DIR |= TMC2209_1_EN_PIN_bm);
-#define CONFIG_TMC2209_1_STEP()     (TMC2209_1_STEP_PORT.DIR |= TMC2209_1_STEP_PIN_bm);
-#define CONFIG_TMC2209_1_DIR()      (TMC2209_1_DIR_PORT.DIR |= TMC2209_1_DIR_PIN_bm);
+#define PUMP2_STEP_PORT         PORTD
+#define PUMP2_STEP_PIN_bm       PIN6_bm
+#define PUMP2_STEP_PIN_bp       PIN6_bp
 
-#define TMC2209_1_DISABLE()     ( TMC2209_1_EN_PORT.OUT |= TMC2209_1_EN_PIN_bm ); STEPPERS_CB.enabled[1] = false;
-#define TMC2209_1_ENABLE()      ( TMC2209_1_EN_PORT.OUT &= ~TMC2209_1_EN_PIN_bm ); STEPPERS_CB.enabled[1] = true;
-#define TMC2209_1_FORWARD()     ( TMC2209_1_DIR_PORT.OUT |= TMC2209_1_DIR_PIN_bm ); STEPPERS_CB.dir[1] = DIR_FW;
-#define TMC2209_1_REVERSE()     ( TMC2209_1_DIR_PORT.OUT &= ~TMC2209_1_DIR_PIN_bm ); STEPPERS_CB.dir[1] = DIR_REV;
-#define TMC2209_1_STEP_ON()     ( TMC2209_1_STEP_PORT.OUT |= TMC2209_1_STEP_PIN_bm )
-#define TMC2209_1_STEP_OFF()    ( TMC2209_1_STEP_PORT.OUT &= ~TMC2209_1_STEP_PIN_bm )
-#define TMC2209_1_STEP_TOGGLE() ( TMC2209_1_STEP_PORT.OUT ^= 1UL << TMC2209_1_STEP_PIN_bp);
+#define PUMP2_DIR_PORT          PORTD
+#define PUMP2_DIR_PIN_bm        PIN5_bm
+#define PUMP2_DIR_PIN_bp        PIN5_bp
 
-#define CONFIG_TMC2209_2_EN()       (TMC2209_2_EN_PORT.DIR |= TMC2209_2_EN_PIN_bm);
-#define CONFIG_TMC2209_2_STEP()     (TMC2209_2_STEP_PORT.DIR |= TMC2209_2_STEP_PIN_bm);
-#define CONFIG_TMC2209_2_DIR()      (TMC2209_2_DIR_PORT.DIR |= TMC2209_2_DIR_PIN_bm);
+#define PUMP2_EN_CONFIG()       (PUMP2_EN_PORT.DIR |= PUMP2_EN_PIN_bm);
+#define PUMP2_STEP_CONFIG()     (PUMP2_STEP_PORT.DIR |= PUMP2_STEP_PIN_bm);
+#define PUMP2_DIR_CONFIG()      (PUMP2_DIR_PORT.DIR |= PUMP2_DIR_PIN_bm);
 
-#define TMC2209_2_DISABLE()     ( TMC2209_2_EN_PORT.OUT |= TMC2209_2_EN_PIN_bm ); STEPPERS_CB.enabled[2] = false;
-#define TMC2209_2_ENABLE()      ( TMC2209_2_EN_PORT.OUT &= ~TMC2209_2_EN_PIN_bm ); STEPPERS_CB.enabled[2] = true;
-#define TMC2209_2_FORWARD()     ( TMC2209_2_DIR_PORT.OUT |= TMC2209_2_DIR_PIN_bm ); STEPPERS_CB.dir[2] = DIR_FW;
-#define TMC2209_2_REVERSE()     ( TMC2209_2_DIR_PORT.OUT &= ~TMC2209_2_DIR_PIN_bm ); STEPPERS_CB.dir[2] = DIR_REV;
-#define TMC2209_2_STEP_ON()     ( TMC2209_2_STEP_PORT.OUT |= TMC2209_2_STEP_PIN_bm )
-#define TMC2209_2_STEP_OFF()    ( TMC2209_2_STEP_PORT.OUT &= ~TMC2209_2_STEP_PIN_bm )
-#define TMC2209_2_STEP_TOGGLE() ( TMC2209_2_STEP_PORT.OUT ^= 1UL << TMC2209_2_STEP_PIN_bp);
+#define PUMP2_DISABLE()     ( PUMP2_EN_PORT.OUT |= PUMP2_EN_PIN_bm )
+#define PUMP2_ENABLE()      ( PUMP2_EN_PORT.OUT &= ~PUMP2_EN_PIN_bm )
+#define PUMP2_FORWARD()     ( PUMP2_DIR_PORT.OUT |= PUMP2_DIR_PIN_bm )
+#define PUMP2_REVERSE()     ( PUMP2_DIR_PORT.OUT &= ~PUMP2_DIR_PIN_bm )
+#define PUMP2_STEP_ON()     ( PUMP2_STEP_PORT.OUT |= PUMP2_STEP_PIN_bm )
+#define PUMP2_STEP_OFF()    ( PUMP2_STEP_PORT.OUT &= ~PUMP2_STEP_PIN_bm )
+#define PUMP2_STEP_TOGGLE() ( PUMP2_STEP_PORT.OUT ^= 1UL << PUMP2_STEP_PIN_bp)
 
-void TMC2209_init(void);
-//bool tmc2209_test( char *s_id, char *s_opt, char *s_action, char *s_secs );
-bool tmc2209_test( char *s_id, char *s_var1, char *s_var2, char *s_var3 );
-void tmc2209_stop(uint8_t id);
-//void tmc2209_run(uint8_t id, char *s_action, uint16_t secs);
-void tmc2209_run(uint8_t id, uint16_t secs);
-void get_tmc2209_status(steppers_cb_t *steppers_cb);
+
+void pump0_init(void);
+void pump0_stop(void);
+void pump0_run(uint16_t secs);
+
+void pump1_init(void);
+void pump1_stop(void);
+void pump1_run(uint16_t secs);
+
+void pump2_init(void);
+void pump2_stop(void);
+void pump2_run(uint16_t secs);
+
+bool pump( char *s_id, char *s_cmd, char *s_param );
+bool pump_tests( char *s_id, char *s_cmd, char *s_param );
+void pump_print_status(void);
+bool pump_config( char *s_id, char *s_freq );
+
+void pump_config_default(void);
+void pump_update_config(void);
 
 #ifdef	__cplusplus
 }

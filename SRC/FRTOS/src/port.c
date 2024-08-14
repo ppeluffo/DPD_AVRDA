@@ -32,6 +32,7 @@
 #include "porthardware.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "tmc2209.h"
 
 /*-----------------------------------------------------------
 * Implementation of functions defined in portable.h for the AVR port.
@@ -219,6 +220,8 @@ static void prvSetupTimerInterrupt( void )
         /* Clear tick interrupt flag. */
         CLR_INT( INT_FLAGS, INT_MASK );
 
+       //PUMP0_STEP_TOGGLE();
+        
         vPortYieldFromTick();
 
         asm volatile ( "reti" );

@@ -130,7 +130,7 @@ int main(void) {
     // Init out of rtos !!!
     system_init();
     
-    frtos_open(fdTERM, 9600 );
+    frtos_open(fdTERM, 115200 );
     frtos_open(fdI2C0, 100 );
     frtos_open(fdNVM, 0 );
     

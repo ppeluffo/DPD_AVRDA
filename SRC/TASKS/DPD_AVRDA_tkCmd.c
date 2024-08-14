@@ -90,7 +90,8 @@ static void cmdHelpFunction(void)
         
     }  else if ( !strcmp_P( strupr(argv[1]), PSTR("CONFIG"))) {
 		xprintf_P( PSTR("-config:\r\n"));
-        xprintf_P( PSTR("  save, load\r\n"));
+        xprintf_P( PSTR("  default, save, load\r\n"));
+        xprintf_P( PSTR("  pump {0,1,2} {freq}\r\n"));
         
     	// HELP RESET
 	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
@@ -102,11 +103,7 @@ static void cmdHelpFunction(void)
 		xprintf_P( PSTR("-test\r\n"));
         xprintf_P( PSTR("  valve {0,1,2} {open|close}\r\n"));
         xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
-        xprintf_P( PSTR("  stepper {0,1,2} run secs\r\n"));
-        //xprintf_P( PSTR("                  run {fw|rev} secs\r\n"));
-        //xprintf_P( PSTR("  stepper {0,1,2} {en|dir} {on|off}\r\n"));
-        //xprintf_P( PSTR("                  run {fw|rev} secs\r\n"));
-        xprintf_P( PSTR("                  stop\r\n"));
+        xprintf_P( PSTR("  pump {0,1,2} {en|dir|step} {on|off}\r\n"));
         xprintf_P( PSTR("  opto {on|off}\r\n"));
         xprintf_P( PSTR("  adc1115 {init,start,status,read,rse,mread}\r\n"));
         xprintf_P( PSTR("  kill {wan,sys}\r\n"));
@@ -119,11 +116,10 @@ static void cmdHelpFunction(void)
     } else if (!strcmp_P( strupr(argv[1]), PSTR("OPTO"))) {
         xprintf_P( PSTR("-opto {on|off}\r\n"));
         xprintf_P( PSTR("      read N\r\n"));
-
         return;
 
     } else if (!strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {
-        xprintf_P( PSTR("-pump {0,1,2} run secs\r\n"));
+        xprintf_P( PSTR("-pump {0,1,2} run {secs}\r\n"));
         xprintf_P( PSTR("              stop\r\n"));
         return;
         
@@ -135,12 +131,12 @@ static void cmdHelpFunction(void)
         xprintf("-status\r\n");
         xprintf("-reset\r\n");
         xprintf("-config...\r\n");
-        xprintf("-write...\r\n");
-        xprintf("-read...\r\n");
+        //xprintf("-write...\r\n");
+        //xprintf("-read...\r\n");
         xprintf("-test...\r\n");
-        xprintf("*valve...\r\n");
-        xprintf("*opto...\r\n");
-        xprintf("*pump...\r\n");
+        xprintf("-valve...\r\n");
+        xprintf("-opto...\r\n");
+        xprintf("-pump...\r\n");
        
     }
    
@@ -202,8 +198,9 @@ static void cmdPumpFunction(void)
 {
     // pump {0,1,2} run secs
     // pump {0,1,2} stop
+    
     FRTOS_CMD_makeArgv();
-    tmc2209_test( argv[1], argv[2], argv[3], argv[4] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+    pump( argv[1], argv[2], argv[3] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
 }
 //------------------------------------------------------------------------------
 static void cmdTestFunction(void)
@@ -266,6 +263,7 @@ float volts = 0.0;
                     
     }
     
+    // test valve {0,1,2} {open|close}
     if ( !strcmp_P( strupr(argv[1]), PSTR("VALVE"))) {
         valve_tests( argv[2], argv[3]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
         return;
@@ -276,8 +274,9 @@ float volts = 0.0;
         return;
     }
     
-    if ( !strcmp_P( strupr(argv[1]), PSTR("STEPPER"))) {
-        tmc2209_test( argv[2], argv[3], argv[4], argv[5] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+    // test pump {0,1,2} {en|dir|step} {on|off}
+    if ( !strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {
+        pump_tests( argv[2], argv[3], argv[4] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
         return;
     }
     
@@ -363,61 +362,18 @@ static void cmdStatusFunction(void)
 
     // https://stackoverflow.com/questions/12844117/printing-defined-constants
 
-vstatus_t vstatus;
-steppers_cb_t steppers_cb;
-uint8_t i;
-
     xprintf("Spymovil %s %s TYPE=%s, VER=%s %s \r\n" , HW_MODELO, FRTOS_VERSION, FW_TYPE, FW_REV, FW_DATE);
       
  //D   xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
     
     xprintf_P(PSTR("Valves:\r\n"));
-    get_valve_status(&vstatus);
-    if (vstatus.vs0 == VALVE_OPEN ) {
-        xprintf_P(PSTR(" V0:OPEN\r\n"));
-    } else {
-        xprintf_P(PSTR(" V0:CLOSE\r\n"));
-    }
-    if (vstatus.vs1 == VALVE_OPEN ) {
-        xprintf_P(PSTR(" V1:OPEN\r\n"));
-    } else {
-        xprintf_P(PSTR(" V1:CLOSE\r\n"));
-    }
-    if (vstatus.vs2 == VALVE_OPEN ) {
-        xprintf_P(PSTR(" V2:OPEN\r\n"));
-    } else {
-        xprintf_P(PSTR(" V2:CLOSE\r\n"));
-    }
+    valve_print_status();
     
     xprintf_P(PSTR("Contador: %lu\r\n"), counter_read() );
     
-    get_tmc2209_status(&steppers_cb);
-    xprintf_P(PSTR("Motores:\r\n"));
-    for (i=0; i<3; i++) {
-        xprintf_P(PSTR(" M%d: "), i);
+    xprintf_P(PSTR("Pumps:\r\n"));
+    pump_print_status();
         
-        if ( steppers_cb.enabled[i] == true ) {
-             xprintf_P(PSTR("(en)  "));
-        } else {
-             xprintf_P(PSTR("(dis) "));
-        }
-        
-        /*
-         * Los motores siempre los muevo FW !!!
-        if ( steppers_cb.dir[i] == DIR_FW ) {
-            xprintf_P(PSTR("(FW)  "));
-        } else {
-            xprintf_P(PSTR("(REV) "));
-        }
-         */
-
-        if ( steppers_cb.status[i] == RUNNING ) {
-            xprintf_P(PSTR("running, %lu\r\n"), steppers_cb.cnt[i]);
-        } else {
-            xprintf_P(PSTR("stopped\r\n"));
-        }
-    }
-    
     if ( opto_get_status() ) {
         xprintf_P(PSTR("Opto Led: ON\r\n"));
     } else {
@@ -465,6 +421,14 @@ static void cmdConfigFunction(void)
     
     FRTOS_CMD_makeArgv();
 
+    // PUMP FREQ
+    // pump {0,1,2} {freq}
+    if (!strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {   
+        pump_config( argv[2], argv[3]);
+        pv_snprintfP_OK();
+		return;
+        
+    }
  	// SAVE
 	// config save
 	if (!strcmp_P( strupr(argv[1]), PSTR("SAVE"))) {       
@@ -477,6 +441,14 @@ static void cmdConfigFunction(void)
 	// config load
 	if (!strcmp_P( strupr(argv[1]), PSTR("LOAD"))) {
 		u_load_config_from_NVM();
+		pv_snprintfP_OK();
+		return;
+	}
+    
+    // DEFAULT
+	// config default
+	if (!strcmp_P( strupr(argv[1]), PSTR("DEFAULT"))) {
+		u_config_default();
 		pv_snprintfP_OK();
 		return;
 	}
