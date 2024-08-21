@@ -105,7 +105,8 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
         xprintf_P( PSTR("  pump {0,1,2} {en|dir|step} {on|off}\r\n"));
         xprintf_P( PSTR("  opto {on|off}\r\n"));
-        xprintf_P( PSTR("  adc1115 {init,start,status,read,rse,mread}\r\n"));
+        xprintf_P( PSTR("  adc1115 {init,start,status,read,rse,readrow,mread,mrow}\r\n"));
+        xprintf_P( PSTR("  adc1115 {readconf, writeconf, read, setup, setdebug, cleardebug}\r\n"));
         xprintf_P( PSTR("  kill {wan,sys}\r\n"));
         return;
        
@@ -175,6 +176,7 @@ float res_mv = 0.0;
         return;
     }
     
+    /*
     if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
         res = ADC1115_multiple_read(atoi(argv[2]));
         xprintf_P(PSTR("RES=%0.3f\r\n"),res );
@@ -190,6 +192,7 @@ float res_mv = 0.0;
         pv_snprintfP_OK();
         return;
     }
+     */
     
     
 }
@@ -211,56 +214,69 @@ float volts = 0.0;
 
     FRTOS_CMD_makeArgv();
  
-    // test adc1115 {init,start,status,read}
+    // test adc1115 {init,read}
     if ( !strcmp_P( strupr(argv[1]), PSTR("ADC1115"))) {
+               
         
-        if ( !strcmp_P( strupr(argv[2]), PSTR("INIT"))) {
-            ADC1115_init();
-            //ADC_setup();
+        if ( !strcmp_P( strupr(argv[2]), PSTR("SETDEBUG"))) {
+            ADS1115_set_debug();
             pv_snprintfP_OK();
             return;
         }
         
-        if ( !strcmp_P( strupr(argv[2]), PSTR("START"))) {
-            ADC1115_start_conversion();
+        if ( !strcmp_P( strupr(argv[2]), PSTR("CLEARDEBUG"))) {
+            ADS1115_clear_debug();
             pv_snprintfP_OK();
             return;
         }
         
-        if ( !strcmp_P( strupr(argv[2]), PSTR("STATUS"))) {
-            if ( ADC1115_is_conversion_done() ) {
-                xprintf_P(PSTR("conversion done\r\n"));
-            } else {
-                xprintf_P(PSTR("conversion NOT done\r\n"));
-            }
+        if ( !strcmp_P( strupr(argv[2]), PSTR("READCONF"))) {
+            ADS1115_set_debug();
+            res = ADS1115_readRegister(0x01);
+            ADS1115_clear_debug();
+            xprintf_P(PSTR("REG_0x01:0x%02x\r\n"), res);
             pv_snprintfP_OK();
-            return;  
-        }  
+            return;
+        }
+        
+        if ( !strcmp_P( strupr(argv[2]), PSTR("WRITECONF"))) {
+            //ADS1115_set_debug();
+            ADS1115_writeRegister(0x01, atoi(argv[3]));
+            //ADS1115_clear_debug();
+            pv_snprintfP_OK();
+            return;
+        }
         
         if ( !strcmp_P( strupr(argv[2]), PSTR("READ"))) {
-            res = ADC1115_get_conversion_result();
-            //volts = ADC_readChannel(ADS1115_COMP_0_GND);
-            xprintf_P(PSTR("RES=0x%04x (%u)\r\n"),res, res );
-            //xprintf_P(PSTR("VOLTS=%f\r\n"),volts );
-            pv_snprintfP_OK();
-            return;
-        }
-
-        if ( !strcmp_P( strupr(argv[2]), PSTR("RSE"))) {
-            res = ADC1115_read_single_ended();
-            xprintf_P(PSTR("RES=0x%04x (%u)\r\n"),res, res );
+            ADS1115_test_readSingle();
             pv_snprintfP_OK();
             return;
         }
         
         if ( !strcmp_P( strupr(argv[2]), PSTR("MREAD"))) {
-            res = ADC1115_multiple_read(atoi(argv[3]));
-            xprintf_P(PSTR("RES=0x%04x (%u)\r\n"),res, res );
+            ADS1115_test_readMultiple(atoi(argv[3]));
             pv_snprintfP_OK();
             return;
         }
         
-                    
+        if ( !strcmp_P( strupr(argv[2]), PSTR("MROW"))) {
+            ADS1115_test_readRawMultiple(atoi(argv[3]));
+            pv_snprintfP_OK();
+            return;
+        }
+
+        if ( !strcmp_P( strupr(argv[2]), PSTR("READROW"))) {
+            ADS1115_test_readRawSingle();
+            pv_snprintfP_OK();
+            return;
+        }
+        
+        if ( !strcmp_P( strupr(argv[2]), PSTR("SETUP"))) {
+            ADS1115_setup();
+            pv_snprintfP_OK();
+            return;
+        }
+             
     }
     
     // test valve {0,1,2} {open|close}

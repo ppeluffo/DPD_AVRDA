@@ -85,10 +85,10 @@ extern "C" {
 #include "tmc2209.h"
 #include "opto.h"
 //#include "ads1115.h"
-#include "adc1115.h"
+#include "adc1X15.h"
 
-#define FW_REV "1.0.3a"
-#define FW_DATE "@ 20240814"
+#define FW_REV "1.0.3c"
+#define FW_DATE "@ 20240820"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -136,6 +136,7 @@ void system_init();
 void reset(void);
 bool u_save_config_in_NVM(void);
 bool u_load_config_from_NVM(void);
+void u_config_default(void);
 
 void SYSTEM_ENTER_CRITICAL(void);
 void SYSTEM_EXIT_CRITICAL(void);

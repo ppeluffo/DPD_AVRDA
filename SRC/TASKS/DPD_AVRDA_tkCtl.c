@@ -39,7 +39,7 @@ void tkCtl(void * pvParameters)
        u_config_default();
     }
     
-    ADC1115_init();
+    ADS1115_setup();
     
     // Por ultimo habilito a todas las otras tareas a arrancar
     starting_flag = true;

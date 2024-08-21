@@ -35,7 +35,9 @@ void pump0_run(uint16_t secs)
     TCB1.INTFLAGS = TCB_CAPT_bm;                         
     TCB1.CTRLA = TCB_ENABLE_bm; 
     
-    pump0.ticks = secs * pump0.freq;
+    //pump0.ticks = secs * pump0.freq;
+    pump0.ticks = (uint32_t)secs * pump0.freq;
+    //xprintf_P(PSTR("PUMP0 ticks %lu\r\n"), pump0.ticks);
     pump0.running = true;
     pump0.enabled = true;
 }
@@ -92,7 +94,9 @@ void pump1_run(uint16_t secs)
     
     TCB2.INTFLAGS = TCB_CAPT_bm;                         
     TCB2.CTRLA = TCB_ENABLE_bm;  
-    pump1.ticks = secs * pump1.freq;
+    //pump1.ticks = secs * pump1.freq;
+    pump1.ticks = (uint32_t)secs * pump1.freq;
+    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pump1.ticks);
     pump1.running = true;
     pump1.enabled = true;
 }
@@ -148,7 +152,9 @@ void pump2_run(uint16_t secs)
     
     TCB3.INTFLAGS = TCB_CAPT_bm;                         
     TCB3.CTRLA = TCB_ENABLE_bm;  
-    pump2.ticks = secs * pump2.freq;
+    //pump2.ticks = secs * pump2.freq;
+    pump2.ticks = (uint32_t)secs * pump2.freq;
+    //xprintf_P(PSTR("PUMP2 ticks %lu\r\n"), pump2.ticks);
     pump2.running = true;
     pump2.enabled = true;   
 }
@@ -384,7 +390,7 @@ void pump_print_status(void)
     }
         
     if ( pump0.running ) {
-        xprintf_P(PSTR("running\r\n"));
+        xprintf_P(PSTR("running (%lu)\r\n"), pump0.ticks);
     } else {
         xprintf_P(PSTR("stopped\r\n"));
     }
@@ -397,7 +403,7 @@ void pump_print_status(void)
     }
         
     if ( pump1.running ) {
-        xprintf_P(PSTR("running\r\n"));
+        xprintf_P(PSTR("running (%lu)\r\n"), pump1.ticks);
     } else {
         xprintf_P(PSTR("stopped\r\n"));
     }
@@ -410,7 +416,7 @@ void pump_print_status(void)
     }
         
     if ( pump2.running ) {
-        xprintf_P(PSTR("running\r\n"));
+        xprintf_P(PSTR("running (%lu)\r\n"), pump2.ticks);
     } else {
         xprintf_P(PSTR("stopped\r\n"));
     }        

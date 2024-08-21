@@ -15,7 +15,6 @@
 #define DEVADDRESS_EEPROM_M2402	0xA0
 #define DEVADDRESS_RTC_M79410	0xDE
 #define DEVADDRESS_INA         	0x82
-#define DEVADDRESS_ADS1115      0x90
 #define DEVADDRESS_ADC1115      0x90
 
 void I2C_init(void);
