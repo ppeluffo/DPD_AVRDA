@@ -110,6 +110,12 @@ pump_CB_t pump0, pump1, pump2;
 #define PUMP2_STEP_OFF()    ( PUMP2_STEP_PORT.OUT &= ~PUMP2_STEP_PIN_bm )
 #define PUMP2_STEP_TOGGLE() ( PUMP2_STEP_PORT.OUT ^= 1UL << PUMP2_STEP_PIN_bp)
 
+typedef struct {
+    bool debug;
+    uint16_t secs;
+} pumpCB_t;
+
+pumpCB_t pumpCB_0, pumpCB_1, pumpCB_2;
 
 void pump0_init(void);
 void pump0_stop(void);
@@ -124,23 +130,18 @@ void pump2_stop(void);
 void pump2_run(uint16_t secs);
 
 bool pump( char *s_id, char *s_cmd, char *s_param );
-bool pump_tests( char *s_id, char *s_cmd, char *s_param );
 void pump_print_status(void);
 bool pump_config( char *s_id, char *s_freq );
 
 void pump_config_default(void);
 void pump_update_config(void);
 
-
-void f_pump_0_config( bool f_debug, uint16_t freq, uint16_t dummyarg0);
-void f_pump_0_run(bool f_debug, uint16_t secs, uint16_t dummyarg0);
-void f_pump_0_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1 );
-void f_pump_1_config( bool f_debug, uint16_t freq, uint16_t dummyarg0);
-void f_pump_1_run(bool f_debug, uint16_t secs, uint16_t dummyarg0);
-void f_pump_1_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1 );
-void f_pump_2_config( bool f_debug, uint16_t freq, uint16_t dummyarg0);
-void f_pump_2_run( bool f_debug, uint16_t secs, uint16_t dummyarg0);
-void f_pump_2_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
+void fn_pump_0_run(void);
+void fn_pump_0_stop(void);
+void fn_pump_1_run(void);
+void fn_pump_1_stop(void);
+void fn_pump_2_run(void);
+void fn_pump_2_stop(void);
 
 #ifdef	__cplusplus
 }

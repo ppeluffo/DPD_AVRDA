@@ -11,6 +11,17 @@
  * 
  * https://start.atmel.com/#dashboard
  * 
+ * PENDIENTE:
+ * - Procedimiento de cambio de bombas y seteo de frecuencias
+ * 
+ * 
+ * Version 1.0.4 @ 20241001
+ * - Creo los test de todos los perifericos
+ * - Creo los procedimientos de tareas. Se prueban desde tkCmd
+ * - Uso del watchdog
+ * - Rutinas de modem
+ * 
+ * 
  * Version 1.0.3e @ 20240912
  * - Arreglo problema de uarts de esperar por ultimo byte
  * - Fijo velocidad de bombas por defecto en valores enviados por quimica

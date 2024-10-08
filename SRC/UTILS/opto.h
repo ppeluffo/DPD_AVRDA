@@ -21,6 +21,7 @@ extern "C" {
 #include <avr/pgmspace.h>
 #include "stdlib.h"   
 #include "string.h"
+#include "xprintf.h"
 
 bool opto_status;
 
@@ -28,15 +29,22 @@ bool opto_status;
 #define OPTO_ENABLE_PIN_bm     PIN6_bm
 #define OPTO_ENABLE_PIN_bp     PIN6_bp
    
-#define CONFIG_OPTO()    (OPTO_ENABLE_PORT.DIR |= OPTO_ENABLE_PIN_bm );
-#define PRENDER_OPTO()   (OPTO_ENABLE_PORT.OUT |= OPTO_ENABLE_PIN_bm ); opto_status = true;
-#define APAGAR_OPTO()    (OPTO_ENABLE_PORT.OUT &= ~OPTO_ENABLE_PIN_bm ); opto_status = false;
+#define CONFIG_OPTO()    (OPTO_ENABLE_PORT.DIR |= OPTO_ENABLE_PIN_bm )
+#define PRENDER_OPTO()   (OPTO_ENABLE_PORT.OUT |= OPTO_ENABLE_PIN_bm )
+#define APAGAR_OPTO()    (OPTO_ENABLE_PORT.OUT &= ~OPTO_ENABLE_PIN_bm )
+
+typedef struct {
+    bool debug;
+} optoCB_t;
+
+optoCB_t optoCB;
 
 bool opto_get_status(void);
-bool opto_test(char *s_action);
+void fn_opto_on(void);
+void fn_opto_off(void);
 
-void f_opto_on(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_opto_off(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
+
+
 
 
 #ifdef	__cplusplus

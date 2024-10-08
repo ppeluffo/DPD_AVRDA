@@ -173,278 +173,57 @@ void SYSTEM_EXIT_CRITICAL(void)
     xSemaphoreGive( sem_SYSVars );
 }
 //------------------------------------------------------------------------------
-void f_init_system(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+float cloro_from_absorbancia(float abs, bool debug)
 {
-    if (f_debug)
-        xprintf_P(PSTR("Init System\r\n"));
+    /*
+     * Busca en la curva de calibracion el tramo que se ajusta a la absorbancia
+     * dada y calcula el cloro equivalente
+     */
     
-    f_opto_off(f_debug, 0, 0);
-    f_valve_0_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    f_valve_1_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    f_valve_2_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-}
-//------------------------------------------------------------------------------
-void f_lavar_reservorio_muestra(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    if (f_debug)
-        xprintf_P(PSTR("Lavar reservorio muestra\r\n"));
+uint8_t i;
+uint8_t P0 = -1;
+uint8_t P1 = -1;
+float x0,x1,y0,y1;
+float cloro;
+
+    // Busco el mejor tramo
+    for (i=1; i<CAL_MAX_POINTS; i++) {
         
-    // Abrir válvula V0 para llenar reservorio.
-    f_valve_0_open(f_debug, 0, 0);
+        if ( systemVars.xCal[i] == - 1) {
+            // Se termino la curva y no hay tramos utiles
+            xprintf_P(PSTR("ERROR en curva de calibracion. No hay tramos para %0.3f\r\n"), abs);
+            return (-1.0);
+        }
+        
+        if ( systemVars.xCal[i] > abs ) {
+            // Encontre el tramo adecuado
+            P0 = (i-1);
+            P1 = i;
+            break;
+        }
+    }
     
-    // Permitir llenado del reservorio. Es necesario llenarlo por lo menos 150 mL.
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Cerrar válvula V0.
-    f_valve_0_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-    // Abrir válvula V1 para purgar reservorio.
-    f_valve_1_open(f_debug, 0, 0);
-    
-    // Permitir vaciado del reservorio.
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Cerrar válvula V1.
-    f_valve_1_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-}
-//------------------------------------------------------------------------------
-void f_llenar_reservorio_muestra(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-     if (f_debug)
-        xprintf_P(PSTR("Llenar reservorio muestra\r\n"));
-     
-    // Abrir válvula V0 para llenar reservorio.
-    f_valve_0_open(f_debug, 0, 0);
-    
-    // Permitir llenado del reservorio. Es necesario llenarlo por lo menos 150 mL.
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Cerrar válvula V0.
-    f_valve_0_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-}
-//------------------------------------------------------------------------------
-void f_purga_canal_muestra (bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    /*
-     *  Encender bomba M2 para purgar canal de muestra (la válvula V2 está abierta, por lo que se
-     * descarta a través de ella).
-     *  Apagar bomba M2 transcurridos Z segundos de encendida (a determinar).
-     */
-    if (f_debug)
-        xprintf_P(PSTR("Purga canal muestra\r\n"));
-    
-    f_pump_2_run(f_debug, 15, 0);
-    vTaskDelay( ( TickType_t)( 15000 / portTICK_PERIOD_MS ) );
-}
-//------------------------------------------------------------------------------
-void f_lavado_celda(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    
-    if (f_debug)
-        xprintf_P(PSTR("Lavado celda\r\n"));
-    
-    // Cerrar válvula V2.
-    f_valve_2_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-    // Encender bomba M2 para llenar la celda de reacción con muestra.
-    // Apagar bomba M2 transcurridos Z? segundos de encendida (a determinar).
-    f_pump_2_run(f_debug, 15, 0);
-    vTaskDelay( ( TickType_t)( 15000 / portTICK_PERIOD_MS ) );
-    
-    // Abrir válvula V2 para vaciar el contenido de la celda de reacción.
-    f_valve_2_open(f_debug, 0, 0);
-    
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Cerrar válvula V2.
-    f_valve_2_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-}
-//------------------------------------------------------------------------------
-void f_ajustes_fotometricos(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    /*
-     * Encender bomba M2 para llenar la celda de reacción con muestra.
-     * Apagar bomba M2 transcurridos Z? segundos de encendida (a determinar).
-     * Asegurarse de que estén apagados los drivers (este paso es fundamental porque los drivers
-     * introducen ruido significativamente en las lecturas fotométricas).
-     */
-    
-    if (f_debug)
-        xprintf_P(PSTR("Ajustes fotométricos\r\n"));
-    
-    f_pump_2_run(f_debug, 15, 0);
-    vTaskDelay( ( TickType_t)( 15000 / portTICK_PERIOD_MS ) );
-    
-    // Asegurarse que el LED esté apagado.
-    f_opto_off(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 2000 / portTICK_PERIOD_MS ) );
-    
-    /*
-     *  Registrar la señal fotométrica y almacenar el promedio de 100 lecturas, lo que corresponde al
-     * ajuste del 0%T (S0).
-     */
-    f_adc_read( f_debug, 128, 0);
-    
-    // Encender LED.
-    f_opto_on(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 2000 / portTICK_PERIOD_MS ) );
-    
-    // Registrar la señal fotométrica y almacenar el promedio de 100 lecturas, lo que corresponde al
-    // 100%T (S100).
-    f_adc_read(f_debug, 128, 0);
-    
-    // Abrir válvula V2 para vaciar el contenido de la celda de reacción.
-    f_valve_2_open(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-}
-//------------------------------------------------------------------------------
-void f_medicion(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    
-    if (f_debug)
-        xprintf_P(PSTR("Medicion\r\n"));
-    
-    // Cerrar válvula V2.
-    f_valve_2_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-    // Encender bomba M0 para dispensar 0.5 mL de reactivo DPD.
-    // Apagar bomba M0 transcurridos 10 segundos de encendida.
-    f_pump_0_run(f_debug, 10, 0);
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Encender bomba M1 para dispensar 0.5 mL de buffer.
-    // Apagar bomba M1 transcurridos 11.5 segundos de encendida.
-    f_pump_1_run(f_debug, 10, 0);
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Encender bomba M2 para dispensar 10 mL de muestra.
-    // Apagar bomba M2 transcurridos Z? segundos de encendida (a determinar).
-    // Asegurarse de que estén apagados los drivers.
-    f_pump_2_run(f_debug, 10, 0);
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    
-    /*
-     *  Esperar 5 segundos para estabilización de la señal fotométrica.
-     *  Registrar la señal fotométrica y almacenar el promedio de 100 lecturas (Lprom). Calcular y
-     * almacenar la absorbancia Aprom, que se calcula como:
-     */
-    // Encender LED.
-    f_opto_on(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 2000 / portTICK_PERIOD_MS ) );
-    
-    // Registrar la señal fotométrica y almacenar el promedio de 100 lecturas, lo que corresponde al
-    // 100%T (S100).
-    f_adc_read(f_debug, 128, 0);
-    
-    // Abrir válvula V2 para vaciar el contenido de la celda de reacción.
-    f_valve_2_open(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-}
-//------------------------------------------------------------------------------
-void f_lavado_final(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    
-    if (f_debug)
-        xprintf_P(PSTR("Lavado final\r\n"));
-    
-    // Cerrar válvula V2.
-    f_valve_2_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-    // Encender bomba M2 para llenar la celda de reacción con muestra.
-    // Apagar bomba M2 transcurridos Z? segundos de encendida (a determinar).
-    f_pump_2_run(f_debug, 15, 0);
-    vTaskDelay( ( TickType_t)( 15000 / portTICK_PERIOD_MS ) );
-    
-    // Abrir válvula V2 para vaciar el contenido de la celda de reacción.
-    f_valve_2_open(f_debug, 0, 0);
-    
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-    
-    // Cerrar válvula V2.
-    f_valve_2_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-
-    // Abrir válvula V1 para purgar reservorio.
-    f_valve_1_open(f_debug, 0, 0);
-    
-    vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
-
-    // Cerrar válvula V1.
-    f_valve_1_close(f_debug, 0, 0);
-    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-    // Encender bomba M2 para vaciar el canal de muestra.
-    // Apagar la bomba M2 transcurridos Z segundos de encendida (a determinar).
-    f_pump_2_run(f_debug, 15, 0);
-    vTaskDelay( ( TickType_t)( 15000 / portTICK_PERIOD_MS ) );
-}
-//------------------------------------------------------------------------------
-void f_test_medir1(bool f_debug, uint16_t samples, uint16_t delay_secs)
-{
-    /*
-     * TEST 0: Solo toma medidas. Samplea 64 veces por medida.
-     * No importa si el led esta prendido o apagado.
-     * 
-     */
-   
-uint16_t adc_acc;
-uint16_t i;
-
-    if (f_debug)
-        xprintf_P(PSTR("TEST medir1 start.\r\n"));
-
-    for (i=0; i<samples; i++) {
-        adc_acc = ADC_read_multiple(64, false);
-        xprintf_P(PSTR("%d,%d\r\n"), i, adc_acc);
-        vTaskDelay( ( TickType_t)( (delay_secs * 1000) / portTICK_PERIOD_MS ) );
-        // ABORT ??       
+    if (P0 == -1 ) {
+        // Termine de recorrer la curva y no encontre un tramos util
+        xprintf_P(PSTR("ERROR en curva de calibracion. No hay tramos para %0.3f\r\n"), abs);
+        return (-1.0);        
     }
 
-    if (f_debug)
-        xprintf_P(PSTR("TEST medir1 end.\r\n"));
+    // El mejor tramo esta entre P0 y P1
+    x0 = systemVars.xCal[P0];
+    x1 = systemVars.xCal[P1];
+    y0 = systemVars.yCal[P0];
+    y1 = systemVars.yCal[P1];
+    if (debug) {
+        xprintf_P(PSTR("(X0=%0.3f,Y0=%0.3f}\r\n"), x0,y0);
+        xprintf_P(PSTR("(X1=%0.3f,Y1=%0.3f}\r\n"), x1,y1);
+    }
     
-}
-//------------------------------------------------------------------------------
-void f_test_medir2(bool f_debug, uint16_t samples, uint16_t delay_secs)
-{
-    /*
-     * TEST 0: Solo toma medidas. Samplea 64 veces por medida.
-     * No importa si el led esta prendido o apagado.
-     * 
-     */
-   
-uint16_t adc_acc;
-uint16_t i;
-
-    if (f_debug)
-        xprintf_P(PSTR("TEST medir2 start.\r\n"));
-
-    for (i=0; i<samples; i++) {
-        f_opto_on(f_debug, 0, 0);
-        vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-        adc_acc = ADC_read_multiple(64, false);
-        f_opto_off(f_debug, 0, 0);
-        
-        xprintf_P(PSTR("%d,%d\r\n"), i, adc_acc);
-        vTaskDelay( ( TickType_t)( (delay_secs * 1000) / portTICK_PERIOD_MS ) );
-        // ABORT ??       
-    } 
-
-    if (f_debug)
-        xprintf_P(PSTR("TEST medir2 end.\r\n"));
+    cloro = ( (y1-y0)/(x1-x0))*(abs - x0) + y0;
+    xprintf_P(PSTR("Absorbancia = %0.3f\r\n"), abs);
+    xprintf_P(PSTR("Cloro(ppm) = %0.3f\r\n"), cloro);
+    
+    return(cloro);
+    
 }
 //------------------------------------------------------------------------------

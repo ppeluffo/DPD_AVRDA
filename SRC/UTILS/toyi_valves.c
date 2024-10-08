@@ -91,71 +91,54 @@ void valve_print_status(void)
     
 }
 // -----------------------------------------------------------------------------
-bool valve_tests( char *valve_id, char *action)
+void fn_valve_0_open(void)
 {
-     
-uint8_t vid = atoi(valve_id);
-    
-	// valve id {open|close}
-
-    if (!strcmp_P( strupr(action), PSTR("OPEN")) ) {
-        return ( valve_open(vid));
-    }
-
-    if (!strcmp_P( strupr(action), PSTR("CLOSE")) ) {
-        return ( valve_close(vid));
-    }
-
-    return(false);
-}
-//------------------------------------------------------------------------------
-void f_valve_0_open(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
-{
-    if (f_debug)
+    if (valveCB_0.debug)
         xprintf_P(PSTR("Valve 0 open\r\n"));
     
     OPEN_VALVE0();
     vstatus.vs0 = VALVE_OPEN; 
 }
 //------------------------------------------------------------------------------
-void f_valve_0_close(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_valve_0_close(void)
 {
-    if (f_debug)
+    if (valveCB_0.debug)
         xprintf_P(PSTR("Valve 0 close\r\n"));
     
     CLOSE_VALVE0();
     vstatus.vs0 = VALVE_CLOSE; 
 }
 //------------------------------------------------------------------------------
-void f_valve_1_open(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_valve_1_open(void)
 {
-    if (f_debug)
+    if (valveCB_1.debug)
         xprintf_P(PSTR("Valve 1 open\r\n"));
+    
     OPEN_VALVE1();
     vstatus.vs1 = VALVE_OPEN; 
 }
 //------------------------------------------------------------------------------
-void f_valve_1_close(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_valve_1_close(void)
 {
-    if (f_debug)
+    if (valveCB_1.debug)
         xprintf_P(PSTR("Valve 1 close\r\n"));
      
     CLOSE_VALVE1();
     vstatus.vs1 = VALVE_CLOSE; 
 }
 //------------------------------------------------------------------------------
-void f_valve_2_open(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_valve_2_open(void)
 {
-    if (f_debug)
+    if (valveCB_2.debug)
         xprintf_P(PSTR("Valve 2 open\r\n"));
      
     OPEN_VALVE2();
     vstatus.vs2 = VALVE_OPEN; 
 }
 //------------------------------------------------------------------------------
-void f_valve_2_close(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_valve_2_close(void)
 {
-    if (f_debug)
+    if (valveCB_2.debug)
         xprintf_P(PSTR("Valve 2 close\r\n"));
     
     CLOSE_VALVE2();

@@ -11,20 +11,18 @@ static void cmdReadFunction(void);
 static void cmdConfigFunction(void);
 static void cmdTestFunction(void);
 
-static void cmdValveFunction(void);
-static void cmdOptoFunction(void);
-static void cmdPumpFunction(void);
-
-static void cmdRunFunction(void);
-void runValves(void);
-void runOpto(void);
-void runPump(void);
-void runAdc(void);
-void runTest1(void);
-void runTest2(void);
-
 static void pv_snprintfP_OK(void );
 static void pv_snprintfP_ERR(void );
+
+bool cmd_test_opto(char *s_action);
+bool cmd_test_valve( char *valve_id, char *s_action);
+bool cmd_test_pump( char *pump_id, char *s_action, char *s_secs);
+bool cmd_test_adc( char *s_counts );
+bool cmd_test_procedimientos( char *s_pid );
+bool cmd_test_cloro( char *s_abs);
+
+void xcal_config(void);
+void ycal_config(void);
 
 //------------------------------------------------------------------------------
 void tkCmd(void * pvParameters)
@@ -56,12 +54,6 @@ uint8_t c = 0;
     FRTOS_CMD_register( "config", cmdConfigFunction );
     FRTOS_CMD_register( "test", cmdTestFunction );
     
-    FRTOS_CMD_register( "valve", cmdValveFunction );
-    FRTOS_CMD_register( "opto", cmdOptoFunction );
-    FRTOS_CMD_register( "pump", cmdPumpFunction );
-    
-    FRTOS_CMD_register( "run", cmdRunFunction );
-    
     xprintf_P(PSTR("Starting tkCmd..\r\n" ));
     xprintf_P(PSTR("Spymovil %s %s %s %s \r\n") , HW_MODELO, FRTOS_VERSION, FW_REV, FW_DATE);
       
@@ -83,256 +75,6 @@ uint8_t c = 0;
 	}    
 }
 //------------------------------------------------------------------------------
-static void cmdRunFunction(void)
-{
-
-    FRTOS_CMD_makeArgv();
-
-    // run lavar1
-    if ( !strcmp_P( strupr(argv[1]), PSTR("LAVAR1"))) {
-        testCB.param1 = true;
-        testCB.param2 = 0;
-        testCB.param3 = 0;
-        testCB.fn = f_lavar_reservorio_muestra;
-        testCB.standby = false; 
-        return;
-    } 
-    
-    // run initsys
-    if ( !strcmp_P( strupr(argv[1]), PSTR("INITSYS"))) {
-        testCB.param1 = true;
-        testCB.param2 = 0;
-        testCB.param3 = 0;
-        testCB.fn = f_init_system;
-        testCB.standby = false; 
-        return;
-    }    
-    
-    // run test1 N(samples) D(delay)
-    if ( !strcmp_P( strupr(argv[1]), PSTR("TEST1"))) {
-        runTest1();
-        return;
-    }
-
-    // run test2 N(samples) D(delay)
-    if ( !strcmp_P( strupr(argv[1]), PSTR("TEST2"))) {
-        runTest2();
-        return;
-    }
-    
-    // run adc N
-    if ( !strcmp_P( strupr(argv[1]), PSTR("ADC"))) {
-        runAdc();
-        return;
-    }
-    
-    // run pump N secs freq
-    if ( !strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {
-        runPump();
-        return;
-    }
-
-    // run opto on|off
-    if ( !strcmp_P( strupr(argv[1]), PSTR("OPTO"))) {
-        runOpto();
-        return;
-    }
-    
-    // run valve N open|close
-    if ( !strcmp_P( strupr(argv[1]), PSTR("VALVE"))) {
-        runValves();
-        return;
-    }
-       
-}
-//------------------------------------------------------------------------------
-void runTest1(void)
-{
-    //run test1 N(samples) D(delay)
-            
-    testCB.param1 = true;
-    testCB.param2 = atoi(argv[2]);
-    testCB.param3 = atoi(argv[3]);
-    testCB.fn = f_test_medir1;
-    testCB.standby = false;    
-}
-//------------------------------------------------------------------------------
-void runTest2(void)
-{
-    //run test1 N(samples) D(delay)
-            
-    testCB.param1 = true;
-    testCB.param2 = atoi(argv[2]);
-    testCB.param3 = atoi(argv[3]);
-    testCB.fn = f_test_medir2;
-    testCB.standby = false;    
-}
-//------------------------------------------------------------------------------
-void runAdc(void)
-{
-            
-    testCB.param1 = true;
-    testCB.param2 = atoi(argv[2]);
-    testCB.param3 = 0;
-    testCB.fn = f_adc_read;
-    testCB.standby = false;
-}
-//------------------------------------------------------------------------------
-void runPump(void)
-{
-    // run pump N secs freq
-    /* Puedo llegar a mandar 2 comandos asi que luego del primero, 
-     * debo esperar que se ejecute antes de pasarle por arriba con el 
-     * segundo
-     */
-    
-    if ( argv[4] != NULL ) {
-        // Primero seteo la frecuencia.
-        testCB.param1 = true;
-        testCB.param2 = atoi(argv[4]);
-        testCB.param3 = 0;
-        
-        switch(atoi(argv[2])) {
-        case 0:
-            testCB.fn = f_pump_0_config;
-            break;
-        case 1:
-            testCB.fn = f_pump_1_config;
-            break;
-        case 2:
-            testCB.fn = f_pump_2_config;
-            break;
-        default:
-            pv_snprintfP_ERR();
-            return;
-        }
-        
-        testCB.standby = false;
-    }
-    
-    while( ! testCB.standby) {
-        vTaskDelay( ( TickType_t)( 100 / portTICK_PERIOD_MS ) );
-    }
-    
-    // Ahora ejecuto el movimiento si argv > 0 o stop si es 0.
-    testCB.param1 = true;
-    testCB.param2 = atoi(argv[3]);
-    testCB.param3 = 0;
-    
-    // RUN ??
-    if ( testCB.param2 > 0 ) {
-        switch(atoi(argv[2])) {
-        case 0:
-            testCB.fn = f_pump_0_run;
-            break;
-        case 1:
-            testCB.fn = f_pump_1_run;
-            break;
-        case 2:
-            testCB.fn = f_pump_2_run;
-            break;
-        default:
-            pv_snprintfP_ERR();
-            return;
-        }
-    
-    } else {
-        // STOP
-        switch(atoi(argv[2])) {
-        case 0:
-            testCB.fn = f_pump_0_stop;
-            break;
-        case 1:
-            testCB.fn = f_pump_1_stop;
-            break;
-        case 2:
-            testCB.fn = f_pump_2_stop;
-            break;
-        default:
-            pv_snprintfP_ERR();
-            return;
-        }
-    } 
-        
-    testCB.standby = false;
-    pv_snprintfP_OK();
-    return;
-}
-//------------------------------------------------------------------------------
-void runOpto(void)
-{
-    
-    testCB.param1 = true;
-    testCB.param2 = 0;
-    testCB.param3 = 0;
-    
-    if ( !strcmp_P( strupr(argv[2]), PSTR("ON"))) {
-        testCB.fn = f_opto_on;
-    } else if ( !strcmp_P( strupr(argv[2]), PSTR("OFF"))) {
-        testCB.fn = f_opto_off;    
-    } else {
-        pv_snprintfP_ERR();
-        return;
-    }
-    
-    // Indicacion de ejecucion
-    testCB.standby = false; 
-
-    pv_snprintfP_OK();
-    return;
-        
-}
-//------------------------------------------------------------------------------
-void runValves(void)
-{    
-
-    testCB.param1 = true;
-    testCB.param2 = 0;
-    testCB.param3 = 0;
-    
-    switch(atoi(argv[2])) {
-        case 0:
-            if ( !strcmp_P( strupr(argv[3]), PSTR("OPEN"))) {
-                testCB.fn = f_valve_0_open;
-            } else if ( !strcmp_P( strupr(argv[3]), PSTR("CLOSE"))) {
-                testCB.fn = f_valve_0_close;    
-            } else {
-                pv_snprintfP_ERR();
-            return;
-            }
-        break;
-        case 1:
-            if ( !strcmp_P( strupr(argv[3]), PSTR("OPEN"))) {
-                testCB.fn = f_valve_1_open;
-            } else if ( !strcmp_P( strupr(argv[3]), PSTR("CLOSE"))) {
-                testCB.fn = f_valve_1_close;    
-            } else {
-                pv_snprintfP_ERR();
-                return;
-            }
-            break;
-        case 2:
-            if ( !strcmp_P( strupr(argv[3]), PSTR("OPEN"))) {
-                testCB.fn = f_valve_2_open;
-            } else if ( !strcmp_P( strupr(argv[3]), PSTR("CLOSE"))) {
-                testCB.fn = f_valve_2_close;    
-            } else {
-                pv_snprintfP_ERR();
-                return;
-            }
-            break;
-        default:
-            pv_snprintfP_ERR();
-            return;
-                
-    }
-    
-    // Indicacion de ejecucion
-    testCB.standby = false;
-    pv_snprintfP_OK();
-    return;
-}
-//------------------------------------------------------------------------------
 static void cmdHelpFunction(void)
 {
 
@@ -352,6 +94,8 @@ static void cmdHelpFunction(void)
 		xprintf_P( PSTR("-config:\r\n"));
         xprintf_P( PSTR("  default, save, load\r\n"));
         xprintf_P( PSTR("  pump {0,1,2} {freq}\r\n"));
+        xprintf_P( PSTR("  XCAL {0,9}, YCAL {0..9} \r\n"));
+        xprintf_P( PSTR("  CAL {i,abs,cl} \r\n"));
         
     	// HELP RESET
 	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
@@ -361,39 +105,26 @@ static void cmdHelpFunction(void)
         
     } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
 		xprintf_P( PSTR("-test\r\n"));
-        xprintf_P( PSTR("  sys {0,1,2,stop} {times} {delay}\r\n"));
         xprintf_P( PSTR("  valve {0,1,2} {open|close}\r\n"));
         xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
-        xprintf_P( PSTR("  pump {0,1,2} {en|dir|step} {on|off}\r\n"));
         xprintf_P( PSTR("  opto {on|off}\r\n"));
-       // xprintf_P( PSTR("  adc1115 {init,start,status,read,rse,readrow,mread,mrow}\r\n"));
-       // xprintf_P( PSTR("  adc1115 {readconf, writeconf, read, setup, setdebug, cleardebug}\r\n"));
-        xprintf_P( PSTR("  adc { read, mread {n}, calibrar, setdebug, cleardebug } \r\n"));
+        xprintf_P( PSTR("  pump {0,1,2} {run|stop} {secs}\r\n"));
+        xprintf_P( PSTR("  adc {counts} \r\n"));
         xprintf_P( PSTR("  kill {wan,sys}\r\n"));
-        return;
-        
-    } else if (!strcmp_P( strupr(argv[1]), PSTR("RUN"))) {
-        xprintf_P( PSTR("-run\r\n"));
-        xprintf_P( PSTR("  test1 N(samples) D(delay)\r\n"));
-        xprintf_P( PSTR("  test2 N(samples) D(delay)\r\n"));
-        xprintf_P( PSTR("  adc samples\r\n"));
-        xprintf_P( PSTR("  pump N secs freq\r\n"));
-        xprintf_P( PSTR("  opto on|off\r\n"));
-        xprintf_P( PSTR("  valve N open|close\r\n"));         
-        return;
-         
-    } else if (!strcmp_P( strupr(argv[1]), PSTR("VALVE"))) {
-        xprintf_P( PSTR("-valve {0,1,2} {open|close}\r\n"));
-        return;
-        
-    } else if (!strcmp_P( strupr(argv[1]), PSTR("OPTO"))) {
-        xprintf_P( PSTR("-opto {on|off}\r\n"));
-        xprintf_P( PSTR("      read N\r\n"));
-        return;
-
-    } else if (!strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {
-        xprintf_P( PSTR("-pump {0,1,2} run {secs}\r\n"));
-        xprintf_P( PSTR("              stop\r\n"));
+        xprintf_P( PSTR("  cloro {abs}\r\n"));
+        xprintf_P( PSTR("  proc 0: inicio_sistema\r\n"));
+        xprintf_P( PSTR("       1: lavado_reservorio_de_muestra\r\n"));
+        xprintf_P( PSTR("       2: llenado_reservorio_con_muestra_a_medir\r\n"));
+        xprintf_P( PSTR("       3: purga_canal_muestra\r\n"));
+        xprintf_P( PSTR("       4: lavado_celda\r\n"));
+        xprintf_P( PSTR("       5: ajustes_fotometricos\r\n"));
+        xprintf_P( PSTR("       6: medicion\r\n"));
+        xprintf_P( PSTR("       7: lavado_final\r\n"));
+        xprintf_P( PSTR("       8: fin_sistema\r\n"));
+        xprintf_P( PSTR("       9: llenar_celda_medida\r\n"));
+        xprintf_P( PSTR("       10: vaciar_celda_medida\r\n"));
+        xprintf_P( PSTR("       11: Calibrar\r\n"));
+        xprintf_P( PSTR("       12: medida_completa\r\n"));
         return;
         
     }  else {
@@ -404,216 +135,35 @@ static void cmdHelpFunction(void)
         xprintf("-status\r\n");
         xprintf("-reset\r\n");
         xprintf("-config...\r\n");
-        //xprintf("-write...\r\n");
-        //xprintf("-read...\r\n");
+        xprintf("-write...\r\n");
+        xprintf("-read...\r\n");
         xprintf("-test...\r\n");
-        xprintf("-valve...\r\n");
-        xprintf("-opto...\r\n");
-        xprintf("-pump...\r\n");
-       
     }
    
 	xprintf("Exit help \r\n");
 
 }
 //------------------------------------------------------------------------------
-static void cmdValveFunction(void)
-{
-    // valve {0,1,2} {open|close}
- 
-    FRTOS_CMD_makeArgv();
-    
-    valve_tests( argv[1], argv[2]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
-        
-}
-//------------------------------------------------------------------------------
-static void cmdOptoFunction(void)
-{
-    // opto {on|off}
-    //      read N
-    
-   
-float res;
-float res_mv = 0.0;
- 
-    FRTOS_CMD_makeArgv();
-    
-    if ( !strcmp_P( strupr(argv[1]), PSTR("ON"))) {
-        opto_test( argv[1] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
-        return;
-    }
-
-    if ( !strcmp_P( strupr(argv[1]), PSTR("OFF"))) {
-        opto_test( argv[1] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
-        return;
-    }
-    
-    /*
-    if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
-        res = ADC1115_multiple_read(atoi(argv[2]));
-        xprintf_P(PSTR("RES=%0.3f\r\n"),res );
-        res_mv = 0.125 * res;
-        xprintf_P(PSTR("RES_mv=%.3f\r\n"),res_mv );
-        pv_snprintfP_OK();
-        return;
-    }
-
-    if ( !strcmp_P( strupr(argv[1]), PSTR("MVREAD"))) {
-        res = ADC1115_multiple_read_mV(atoi(argv[2]));
-        xprintf_P(PSTR("RES= %lu\r\n"),res );
-        pv_snprintfP_OK();
-        return;
-    }
-     */
-    
-    
-}
-//------------------------------------------------------------------------------
-static void cmdPumpFunction(void)
-{
-    // pump {0,1,2} run secs
-    // pump {0,1,2} stop
-    
-    FRTOS_CMD_makeArgv();
-    pump( argv[1], argv[2], argv[3] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
-}
-//------------------------------------------------------------------------------
 static void cmdTestFunction(void)
 {
 
-uint16_t res;
-float volts = 0.0;
-
     FRTOS_CMD_makeArgv();
  
-    // test sys {0,1,2,stop} {times} {delay}
-     if ( !strcmp_P( strupr(argv[1]), PSTR("SYS"))) {
-         
-        // Detengo el test (si esta corriendo )
-        if ( !strcmp_P( strupr(argv[2]), PSTR("STOP"))) {
-            xprintf_P(PSTR("Test stop.\r\n"));
-            testCB.standby = true;
-            return;
-        }
-        
-        // Inicio un test
-        testCB.test_id = atoi(argv[2]);
-        testCB.counts = 1;
-        testCB.max_counts = atoi(argv[3]);
-        testCB.delay_secs = atoi(argv[4]);
-        testCB.standby = false;
-        xprintf_P(PSTR("Starting test #%d, times=%d, delay=%d\r\n\r\n"),testCB.test_id, testCB.max_counts, testCB.delay_secs );
+    // test cloro abs
+    if ( !strcmp_P( strupr(argv[1]), PSTR("CLORO"))) {
+        cmd_test_cloro( argv[2]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
         return;
-     
-     }
+    }
     
     // test adc n
     if ( !strcmp_P( strupr(argv[1]), PSTR("ADC"))) {
-
-        if ( !strcmp_P( strupr(argv[2]), PSTR("CALIBRAR"))) {
-            systemVars.adc_cal_volts = atof(argv[3]);
-            systemVars.adc_cal_factor = ADC_calibrar();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("SETDEBUG"))) {
-            ADC_set_debug();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("CLEARDEBUG"))) {
-            ADC_clear_debug();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("READ"))) {
-            ADC_test_read_single();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("MREAD"))) {
-            ADC_test_read_multiple(atoi(argv[3]));
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        pv_snprintfP_ERR();
-		return;
+        cmd_test_adc( argv[2]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
     }
-    // test adc1115 {init,read}
-    /*
-    if ( !strcmp_P( strupr(argv[1]), PSTR("ADC1115"))) {
-               
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("SETDEBUG"))) {
-            ADS1115_set_debug();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("CLEARDEBUG"))) {
-            ADS1115_clear_debug();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("READCONF"))) {
-            ADS1115_set_debug();
-            res = ADS1115_readRegister(0x01);
-            ADS1115_clear_debug();
-            xprintf_P(PSTR("REG_0x01:0x%02x\r\n"), res);
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("WRITECONF"))) {
-            //ADS1115_set_debug();
-            ADS1115_writeRegister(0x01, atoi(argv[3]));
-            //ADS1115_clear_debug();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("READ"))) {
-            ADS1115_test_readSingle();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("MREAD"))) {
-            ADS1115_test_readMultiple(atoi(argv[3]));
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("MROW"))) {
-            ADS1115_test_readRawMultiple(atoi(argv[3]));
-            pv_snprintfP_OK();
-            return;
-        }
-
-        if ( !strcmp_P( strupr(argv[2]), PSTR("READROW"))) {
-            ADS1115_test_readRawSingle();
-            pv_snprintfP_OK();
-            return;
-        }
-        
-        if ( !strcmp_P( strupr(argv[2]), PSTR("SETUP"))) {
-            ADS1115_setup();
-            pv_snprintfP_OK();
-            return;
-        }
-             
-    }
-    */
     
     // test valve {0,1,2} {open|close}
     if ( !strcmp_P( strupr(argv[1]), PSTR("VALVE"))) {
-        valve_tests( argv[2], argv[3]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        cmd_test_valve( argv[2], argv[3]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
         return;
     }
 
@@ -622,14 +172,20 @@ float volts = 0.0;
         return;
     }
     
-    // test pump {0,1,2} {en|dir|step} {on|off}
+    // test pump {0,1,2} run {secs}
+    //                   stop
     if ( !strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {
-        pump_tests( argv[2], argv[3], argv[4] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        cmd_test_pump( argv[2], argv[3], argv[4] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
         return;
     }
     
     if ( !strcmp_P( strupr(argv[1]), PSTR("OPTO"))) {
-        opto_test( argv[2] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        cmd_test_opto( argv[2] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
+        return;
+    }
+    
+    if ( !strcmp_P( strupr(argv[1]), PSTR("PROC"))) {
+        cmd_test_procedimientos( argv[2] ) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
         return;
     }
     
@@ -710,15 +266,23 @@ static void cmdStatusFunction(void)
 
     // https://stackoverflow.com/questions/12844117/printing-defined-constants
 
+uint8_t i;
+    
     xprintf("Spymovil %s %s TYPE=%s, VER=%s %s \r\n" , HW_MODELO, FRTOS_VERSION, FW_TYPE, FW_REV, FW_DATE);
       
  //D   xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
     
-    xprintf_P(PSTR("ADC:\r\n"));
-    xprintf_P(PSTR(" cal_factor: %d\r\n"), systemVars.adc_cal_factor);
-    xprintf_P(PSTR(" cal_volts: %0.2f\r\n"), systemVars.adc_cal_volts);
-    xprintf_P(PSTR(" vccref: %0.2f\r\n"), (4095.0 * systemVars.adc_cal_volts / systemVars.adc_cal_factor) );
-    
+    xprintf_P(PSTR("Calibracion (i,x,y):\r\n"));
+    for(i=0; i<CAL_MAX_POINTS; i++) {
+        xprintf_P(PSTR(" %d:[%0.3f,%0.3f]\r\n"), i, systemVars.xCal[i], systemVars.yCal[i]);
+    }
+    //xprintf_P(PSTR("\r\n"));
+    xprintf_P(PSTR("Medidas:\r\n"));
+    xprintf_P(PSTR(" S0=%d\r\n"),S0);
+    xprintf_P(PSTR(" S100=%d\r\n"),S100);
+    xprintf_P(PSTR(" absorbancia=%0.3f\r\n"), absorbancia);
+    xprintf_P(PSTR(" cloro_ppm=%0.3f\r\n"), cloro_ppm);
+
     xprintf_P(PSTR("Valves:\r\n"));
     valve_print_status();
     
@@ -774,14 +338,40 @@ static void cmdConfigFunction(void)
     
     FRTOS_CMD_makeArgv();
 
+    // CAL {i,abs,cl}
+    if (!strcmp_P( strupr(argv[1]), PSTR("CAL"))) {  
+        if ( atoi(argv[2]) < CAL_MAX_POINTS ) {
+            systemVars.xCal[atoi(argv[2])] = atof(argv[3]);
+            systemVars.yCal[atoi(argv[2])] = atof(argv[4]);
+            pv_snprintfP_OK();
+        } else {
+            pv_snprintfP_ERR();
+        }
+		return;
+    }
+    
+    //  XCAL {0,9}, YCAL {0..9}
+    if (!strcmp_P( strupr(argv[1]), PSTR("XCAL"))) {  
+        xcal_config();
+        pv_snprintfP_OK();
+		return;
+    }
+
+    if (!strcmp_P( strupr(argv[1]), PSTR("YCAL"))) {  
+        ycal_config();
+        pv_snprintfP_OK();
+		return;
+    }
+    
     // PUMP FREQ
     // pump {0,1,2} {freq}
     if (!strcmp_P( strupr(argv[1]), PSTR("PUMP"))) {   
         pump_config( argv[2], argv[3]);
         pv_snprintfP_OK();
 		return;
-        
     }
+    
+    
  	// SAVE
 	// config save
 	if (!strcmp_P( strupr(argv[1]), PSTR("SAVE"))) {       
@@ -820,5 +410,237 @@ static void pv_snprintfP_OK(void )
 static void pv_snprintfP_ERR(void)
 {
 	xprintf("error\r\n\0");
+}
+//------------------------------------------------------------------------------
+bool cmd_test_opto(char *s_action)
+{
+    /*
+     * Función invocada desde tkCMD para probar prender/apagar el opto
+     */
+    
+    if ( !strcmp_P( strupr(s_action), PSTR("ON"))) {
+        action_opto_on(true);
+        action_await();
+        return(true);
+    }
+    
+    if ( !strcmp_P( strupr(s_action), PSTR("OFF"))) {
+        action_opto_off(true);
+        action_await();
+        return(true);
+    }
+    
+    return(false);
+}
+//------------------------------------------------------------------------------
+bool cmd_test_valve( char *valve_id, char *s_action)
+{
+     
+uint8_t vid = atoi(valve_id);
+bool ret = false;
+
+    if (!strcmp_P( strupr(s_action), PSTR("OPEN")) ) {
+        switch(vid) {
+        case 0:
+            action_valve_0_open(true);
+            ret = true;
+            goto quit;
+            break;
+        case 1:
+            action_valve_1_open(true);
+            ret = true;
+            goto quit;
+            break;
+        case 2:
+            action_valve_2_open(true);
+            ret = true;
+            goto quit;
+            break; 
+        default:
+            return(false);
+        }
+    }
+
+    if (!strcmp_P( strupr(s_action), PSTR("CLOSE")) ) {
+        switch(vid) {
+        case 0:
+            action_valve_0_close(true);
+            ret = true;
+            goto quit;            
+            break;
+        case 1:
+            action_valve_1_close(true);
+            ret = true;
+            goto quit; 
+            break;
+        case 2:
+            action_valve_2_close(true);
+            ret = true;
+            goto quit; 
+            break; 
+        default:
+            return(false);
+        }
+    }
+
+    return(false);
+    
+quit:
+            
+    action_await();
+    return(ret);
+}
+//------------------------------------------------------------------------------
+bool cmd_test_pump( char *pump_id, char *s_action, char *s_secs)
+{
+    // pump {0,1,2} run secs
+    // pump {0,1,2} stop
+ 
+bool ret = false;
+
+    switch(atoi(pump_id)) {
+        case 0:
+            if (!strcmp_P( strupr(s_action), PSTR("RUN")) ) {
+                action_pump_0_run(true, atoi(s_secs) );
+                ret = true;
+                goto quit;
+            }
+
+            if (!strcmp_P( strupr(s_action), PSTR("STOP")) ) {
+                action_pump_0_stop(true);
+                ret = true;
+                goto quit;
+            }     
+            
+            return(false);
+            break;
+            
+        case 1:
+            if (!strcmp_P( strupr(s_action), PSTR("RUN")) ) {
+                action_pump_1_run(true, atoi(s_secs) );
+                ret = true;
+                goto quit;
+            }
+
+            if (!strcmp_P( strupr(s_action), PSTR("STOP")) ) {
+                action_pump_1_stop(true);
+                ret = true;
+                goto quit;
+            }    
+         
+            return(false);
+            break;
+            
+        case 2:
+            if (!strcmp_P( strupr(s_action), PSTR("RUN")) ) {
+                action_pump_2_run(true, atoi(s_secs) );
+                ret = true;
+                goto quit;
+            }
+
+            if (!strcmp_P( strupr(s_action), PSTR("STOP")) ) {
+                action_pump_2_stop(true);
+                ret = true;
+                goto quit;
+            }    
+
+            return(false);
+            break;
+     }
+
+quit:
+            
+    action_await();     
+    return(ret);
+     
+}
+//------------------------------------------------------------------------------
+bool cmd_test_adc( char *s_counts )
+{
+    action_adc_read(true, atoi(s_counts));
+    
+    vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+    action_await();
+    xprintf_P(PSTR("ADCres=%d\r\n"), adcCB.result);
+    return(true);
+    
+} 
+//------------------------------------------------------------------------------
+bool cmd_test_cloro( char *s_abs)
+{
+    
+float abs;
+float cloro;
+    
+   abs = atof(s_abs);
+   cloro = cloro_from_absorbancia( abs, true);
+   return (true);
+    
+}
+//------------------------------------------------------------------------------
+bool cmd_test_procedimientos( char *s_pid )
+{
+    switch(atoi(s_pid)) {
+        case 0:
+            proc_inicio_sistema(true);
+            break;
+        case 1:
+            proc_lavado_reservorio_de_muestra(true);
+            break;
+        case 2:
+            proc_llenado_reservorio_con_muestra_a_medir(true);
+            break;
+        case 3:
+            proc_purga_canal_muestra(true);
+            break;
+        case 4:
+            proc_lavado_celda(true);
+            break;
+        case 5:
+            proc_ajustes_fotometricos(true);
+            break;
+        case 6:
+            proc_medicion(true);
+            break;
+        case 7:
+            proc_lavado_final(true);
+            break;
+        case 8:
+            proc_fin_sistema(true);
+            break;
+        case 9:
+            proc_llenar_celda_medida(true);
+            break;
+        case 10:
+            proc_vaciar_celda_medida(true);
+            break;
+        case 11:
+            proc_calibrar(true);
+            break;
+        case 12:
+            proc_medida_completa(true);
+            break;
+        default:
+            return(false);           
+    }
+    return(true);
+}
+//------------------------------------------------------------------------------
+void xcal_config(void)
+{
+uint8_t i;
+
+    for (i=0; i<CAL_MAX_POINTS; i++) {
+        systemVars.xCal[i] = atof(argv[2+i]);
+    }
+}
+//------------------------------------------------------------------------------
+void ycal_config(void)
+{
+uint8_t i;
+
+    for (i=0; i<CAL_MAX_POINTS; i++) {
+        systemVars.yCal[i] = atof(argv[2+i]);
+    }
 }
 //------------------------------------------------------------------------------

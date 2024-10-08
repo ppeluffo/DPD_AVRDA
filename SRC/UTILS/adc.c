@@ -6,16 +6,6 @@
 
 uint16_t adc_buffer[32];
 
-bool f_adc_debug;
-
-//------------------------------------------------------------------------------
-void ADC_set_debug(void) {
-    f_adc_debug = true;
-}
-//------------------------------------------------------------------------------
-void ADC_clear_debug(void) {
-    f_adc_debug = false;
-}
 //------------------------------------------------------------------------------
 /**
  * \brief Initialize ADC interface
@@ -82,11 +72,7 @@ int8_t ADC_init()
  * \return Nothing
  */
 void ADC_enable()
-{
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_enable:\r\n"));
-    }
-    
+{    
 	ADC0.CTRLA |= ADC_ENABLE_bm;
     vTaskDelay( ( TickType_t)( 100 ) );
 }
@@ -100,9 +86,6 @@ void ADC_enable()
  */
 void ADC_disable()
 {
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_disable:\r\n"));
-    }
 	ADC0.CTRLA &= ~ADC_ENABLE_bm;
     vTaskDelay( ( TickType_t)( 100 ) );
 }
@@ -116,9 +99,6 @@ void ADC_disable()
  */
 void ADC_start_conversion(adc_0_channel_t channel)
 {
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_start_conversion: channel=%d\r\n"), channel);
-    }
 	ADC0.CTRLA &= ~ADC_CONVMODE_bm;
 	ADC0.MUXPOS  = channel;
 	ADC0.COMMAND = ADC_STCONV_bm;
@@ -146,9 +126,6 @@ void ADC_start_diff_conversion(adc_0_channel_t channel, adc_0_muxneg_channel_t c
  */
 void ADC_stop_conversion()
 {
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_stop_conversion:\r\n"));
-    }
 	ADC0.COMMAND = ADC_SPCONV_bm;
 } 
 //------------------------------------------------------------------------------
@@ -177,9 +154,7 @@ adc_result_t ADC_get_conversion_result(void)
     adcVal = ADC0.RES;
     adcVal = adcVal >> ADC_SHIFT_DIV16;
  
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_get_conversion_result: acc=0x%02x(%u), val=%d\r\n"), ADC0.RES, ADC0.RES, adcVal);
-    }
+    //xprintf_P(PSTR("ADC_get_conversion_result: acc=0x%02x(%u), val=%d\r\n"), ADC0.RES, ADC0.RES, adcVal);
      
 	return (adcVal);
 }
@@ -193,9 +168,7 @@ adc_result_t ADC_get_conversion(adc_0_channel_t channel)
 {
 	adc_result_t res;
 
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_get_conversion: channel=%d\r\n"), channel );
-    }
+    //xprintf_P(PSTR("ADC_get_conversion: channel=%d\r\n"), channel );
 	ADC_start_conversion(channel);
 	while (!ADC_is_conversion_done()) {
         vTaskDelay( ( TickType_t)( 10 / portTICK_PERIOD_MS ) );
@@ -232,25 +205,10 @@ uint8_t ADC_get_resolution()
 	return (ADC0.CTRLA & ADC_RESSEL0_bm) ? 10 : 12;
 }
 //------------------------------------------------------------------------------
-float ADC_convert_to_volts(uint16_t counts)
-{
-   float volts = 0.0;
-   
-   volts = systemVars.adc_cal_volts * counts / systemVars.adc_cal_factor;
-   //xprintf_P(PSTR("ADC convert = %0.3f mV\r\n"), volts);
-   
-   return (volts);
-   
-}
-//------------------------------------------------------------------------------
 uint16_t ADC_read_single(void)
 {
     
 uint16_t adc_acc;
-
-    if (f_adc_debug) {
-        xprintf_P(PSTR("ADC_read_single:\r\n"));
-    }
 
     ADC_enable();
     adc_acc = ADC_get_conversion(ADC_MUXPOS_AIN11_gc); /* ADC input pin 12 */
@@ -259,7 +217,7 @@ uint16_t adc_acc;
     return( adc_acc);    
 }
 //------------------------------------------------------------------------------
-uint16_t ADC_read_multiple(uint8_t samples, bool debug)
+uint16_t ADC_read_multiple(uint8_t samples)
 {
     
 uint8_t i;
@@ -277,14 +235,14 @@ float adc_acc;
          adc = ADC_get_conversion(ADC_MUXPOS_AIN11_gc);
          adc_acc += (float)(adc);
          vTaskDelay( ( TickType_t)( 10 ) );
-         if (debug) {
+         //if (debug) {
              //xprintf_P(PSTR("s%02d=%u, %0.3f\r\n"), i, adc, adc_acc);
-             xprintf_P(PSTR("%u,"), adc);
-         }    
+             //xprintf_P(PSTR("%u,"), adc);
+         //}    
     }
-    if (debug) {
-        xprintf_P(PSTR("\r\n"));
-    }
+    //if (debug) {
+    //    xprintf_P(PSTR("\r\n"));
+    //}
     ADC_disable();
         
     adc_acc /= samples;
@@ -294,56 +252,17 @@ float adc_acc;
     
 }
 //------------------------------------------------------------------------------
-void ADC_test_read_single(void)
-{
-uint16_t adc_acc;
-float volts = 0.0;
-
-    adc_acc = ADC_read_single();
-    volts = ADC_convert_to_volts(adc_acc);
-    //xprintf_P(PSTR("ADC single = %d\r\n"), adc_acc);
-    //xprintf_P(PSTR("ADC single = %0.3f V\r\n"), volts);
-    xprintf_P(PSTR("%d\r\n"), adc_acc);
-}
-//------------------------------------------------------------------------------
-void ADC_test_read_multiple( uint8_t times)
-{
-
-uint16_t adc_acc;
-float volts = 0.0;
-
-    adc_acc = ADC_read_multiple(times, false);
-    volts = ADC_convert_to_volts(adc_acc);
-    xprintf_P(PSTR("%d\r\n"), adc_acc);
-    //xprintf_P(PSTR("ADC muti = %d\r\n"), adc_acc);
-    //xprintf_P(PSTR("ADC multi = %0.3f V\r\n"), volts);    
-}
-//------------------------------------------------------------------------------
-uint16_t ADC_calibrar(void)
-{
-
-uint16_t adc_acc;
-//float mV = 0.0;
-
-    adc_acc = ADC_read_multiple(128, false);
-    //mV = ( 2500.0 * adc_acc) / 4096.0;
-    xprintf_P(PSTR("ADC factor calibracion = %d\r\n"), adc_acc);
-    //xprintf_P(PSTR("ADC multi = %0.3f mV\r\n"), mV); 
-    return (adc_acc);
-}
-//------------------------------------------------------------------------------
 // ACCIONES BASICAS
 //------------------------------------------------------------------------------
-void f_adc_read(bool f_debug, uint16_t times, uint16_t dummyarg0)
+void fn_adc_read(void)
 {
 
-uint16_t adc_acc;
+    adcCB.running = true;
+    if (adcCB.debug)
+        xprintf_P(PSTR("ADC read %d times\r\n"), adcCB.counts );
 
-    if (f_debug)
-        xprintf_P(PSTR("ADC read %d times\r\n"), times);
-
-    adc_acc = ADC_read_multiple(times, false);
-    xprintf_P(PSTR("%d\r\n"), adc_acc);
+    adcCB.result = ADC_read_multiple(adcCB.counts);
+    adcCB.running = false;
     return;
 }
 //------------------------------------------------------------------------------

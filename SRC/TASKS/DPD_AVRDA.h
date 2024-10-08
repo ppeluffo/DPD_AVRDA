@@ -86,8 +86,8 @@ extern "C" {
 #include "opto.h"
 #include "adc.h"
 
-#define FW_REV "1.0.3e"
-#define FW_DATE "@ 20240913"
+#define FW_REV "1.0.0"
+#define FW_DATE "@ 20241007"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -125,11 +125,16 @@ bool starting_flag;
 
 // Estructura que tiene el valor de las medidas en el intervalo de poleo
 
+#define CAL_MAX_POINTS   10
+
 struct {   
     bool debug;
     float adc_cal_volts;
     uint16_t adc_cal_factor;
     uint16_t pump_freq[MAX_PUMPS];
+    float xCal[CAL_MAX_POINTS];     // Absorbancias
+    float yCal[CAL_MAX_POINTS];     // Concentracion de cloro
+    
     uint8_t checksum;
 } systemVars;
 
@@ -153,30 +158,64 @@ uint8_t task_running;
 #define SYS_WDG_gc          (0x01 << 1)
 
 struct {
-    void (*fn)(bool, uint16_t, uint16_t);
-    bool param1;
-    uint16_t param2;
-    uint16_t param3;
-    uint8_t test_id;
-    uint16_t max_counts;
-    uint16_t delay_secs;
-    uint16_t counts;
+    void (*fn)(void);
     bool standby;
-} testCB;
+    bool emergency_exit;
+} actionCB;
 
-bool f_debug;
+#define CICLOS_MEDIDA            3
+#define T_LLENADO_RESERVORIO_MAX    15
+#define CNT_LLENADO_RESERVORIO  35000
+#define T_PURGA_CANAL           15
+#define T_VACIADO_RESERVORIO    20
+#define T_LAVADO_CELDA          20
+#define T_LLENADO_CELDA         25  // 10 mL
+#define T_VACIADO_CELDA         10
+#define T_DISPENSAR_DPD         20  //10
+#define T_DISPENSAR_BUFFER      20  //12
+#define CICLOS_LAVADO            4
 
-void f_init_system(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_lavar_reservorio_muestra(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_llenar_reservorio_muestra(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_purga_canal_muestra (bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_lavado_celda(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_ajustes_fotometricos(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_medicion(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_lavado_final(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
+uint16_t S0, S100;
+float absorbancia;
+float cloro_ppm;
 
-void f_test_medir1(bool f_debug, uint16_t samples, uint16_t delay_secs);
-void f_test_medir2(bool f_debug, uint16_t samples, uint16_t delay_secs);
+void action_await(void);;
+
+void action_opto_on(bool debug);
+void action_opto_off(bool debug);
+
+void action_valve_0_open(bool debug);
+void action_valve_0_close(bool debug);
+void action_valve_1_open(bool debug);
+void action_valve_1_close(bool debug);
+void action_valve_2_open(bool debug);
+void action_valve_2_close(bool debug);
+
+void action_pump_0_run( bool debug, uint16_t secs);
+void action_pump_0_stop( bool debug);
+void action_pump_1_run( bool debug, uint16_t secs);
+void action_pump_1_stop( bool debug);
+void action_pump_2_run( bool debug, uint16_t secs);
+void action_pump_2_stop( bool debug);
+
+void action_adc_read( bool debug, uint16_t counts);
+
+void proc_inicio_sistema(bool debug);
+void proc_lavado_reservorio_de_muestra(bool debug);
+void proc_llenado_reservorio_con_muestra_a_medir(bool debug);
+void proc_purga_canal_muestra(bool debug);
+void proc_lavado_celda(bool debug);
+void proc_llenar_celda_medida(bool debug);
+void proc_vaciar_celda_medida(bool debug);
+void proc_ajustes_fotometricos(bool debug);
+void proc_medicion(bool debug);
+void proc_lavado_final(bool debug);
+void proc_fin_sistema(bool debug);
+void proc_calibrar(bool debug);
+void proc_medida_completa(bool debug);
+
+float cloro_from_absorbancia(float abs, bool debug);
+
 
 // No habilitado PLT_WDG !!!
 #define WDG_bm 0x03     // Pone todos los bits habilitados en 1

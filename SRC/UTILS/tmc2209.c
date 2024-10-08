@@ -183,202 +183,6 @@ ISR( TCB3_INT_vect )
     }
 }
 //---------------------------------------------------------------
-bool pump( char *s_id, char *s_cmd, char *s_param )
-{
-
-    // pump {0,1,2} run secs
-    // pump {0,1,2} stop
-    
-    switch(atoi(s_id)) {
-        case 0:
-            if (!strcmp_P( strupr(s_cmd), PSTR("RUN")) ) {
-                pump0_run(atoi(s_param) );
-                return(true);
-            }
-
-            if (!strcmp_P( strupr(s_cmd), PSTR("STOP")) ) {
-                pump0_stop();
-                return(true);
-            }     
-            
-            return(false);
-            break;
-            
-        case 1:
-            if (!strcmp_P( strupr(s_cmd), PSTR("RUN")) ) {
-                pump1_run(atoi(s_param) );
-                return(true);
-            }
-
-            if (!strcmp_P( strupr(s_cmd), PSTR("STOP")) ) {
-                pump1_stop();
-                return(true);
-            }    
-         
-            return(false);
-            break;
-            
-        case 2:
-            if (!strcmp_P( strupr(s_cmd), PSTR("RUN")) ) {
-                pump2_run(atoi(s_param) );
-                return(true);
-            }
-
-            if (!strcmp_P( strupr(s_cmd), PSTR("STOP")) ) {
-                pump2_stop();
-                return(true);
-            }    
-
-            return(false);
-            break;
-     }
-
-    return(false);
-    
-}
-//----------------------------------------------------------------
-bool pump_tests( char *s_id, char *s_cmd, char *s_param )
-{
-
-    // test stepper {0,1,2} {en|step|dir} {on|off}
-    switch(atoi(s_id)) {
-        case 0:
-            if (!strcmp_P( strupr(s_cmd), PSTR("EN")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                    PUMP0_DISABLE();
-                    return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                    PUMP0_ENABLE();
-                    return(true);
-                 }
-                 return(false);
-            }
-            
-            if (!strcmp_P( strupr(s_cmd), PSTR("STEP")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                     PUMP0_STEP_ON();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                     PUMP0_STEP_OFF();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("TG")) ) {
-                     PUMP0_STEP_TOGGLE();
-                     return(true);
-                 }
-                 return(false);
-            }
-            
-            if (!strcmp_P( strupr(s_cmd), PSTR("DIR")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                     PUMP0_FORWARD();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                     PUMP0_REVERSE();
-                     return(true);
-                 }
-                 return(false);
-            }
-            
-            return(false);
-            break; 
-            
-        case 1:
-            if (!strcmp_P( strupr(s_cmd), PSTR("EN")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                    PUMP1_DISABLE();
-                    return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                    PUMP1_ENABLE();
-                    return(true);
-                 }
-                 return(false);
-            }
-            
-            if (!strcmp_P( strupr(s_cmd), PSTR("STEP")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                     PUMP1_STEP_ON();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                     PUMP1_STEP_OFF();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("TG")) ) {
-                     PUMP1_STEP_TOGGLE();
-                     return(true);
-                 }
-                 return(false);
-            }
-            
-            if (!strcmp_P( strupr(s_cmd), PSTR("DIR")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                     PUMP1_FORWARD();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                     PUMP1_REVERSE();
-                     return(true);
-                 }
-                 return(false);
-            }
-            
-            return(false);
-            break; 
-            
-        case 2:
-            if (!strcmp_P( strupr(s_cmd), PSTR("EN")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                    PUMP2_DISABLE();
-                    return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                    PUMP2_ENABLE();
-                    return(true);
-                 }
-                 return(false);
-            }
-            
-            if (!strcmp_P( strupr(s_cmd), PSTR("STEP")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                     PUMP2_STEP_ON();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                     PUMP2_STEP_OFF();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("TG")) ) {
-                     PUMP2_STEP_TOGGLE();
-                     return(true);
-                 }
-                 return(false);
-            }
-            
-            if (!strcmp_P( strupr(s_cmd), PSTR("DIR")) ) {
-                 if (!strcmp_P( strupr(s_param), PSTR("ON")) ) {
-                     PUMP2_FORWARD();
-                     return(true);
-                 }
-                 if (!strcmp_P( strupr(s_param), PSTR("OFF")) ) {
-                     PUMP2_REVERSE();
-                     return(true);
-                 }
-                 return(false);
-            }
-            
-            return(false);
-            break; 
-    }
-
-    return(false);
-    
-}
-//------------------------------------------------------------------------------
 void pump_print_status(void)
 {
          
@@ -495,20 +299,14 @@ void pump_update_config(void)
 //------------------------------------------------------------------------------
 // ACCIONES BASICAS
 //------------------------------------------------------------------------------
-void f_pump_0_config( bool f_debug, uint16_t freq, uint16_t dummyarg0)
+void fn_pump_0_run(void)
 {
-
-    if (f_debug)
-        xprintf_P(PSTR("Pump 0 config %d Hz\r\n"), freq);
     
-    pump0.freq = freq;
-    pump0_stop();
-    TCB1.CCMP = configCPU_CLOCK_HZ / freq;
-}
-// -----------------------------------------------------------------------------
-void f_pump_0_run(bool f_debug, uint16_t secs, uint16_t dummyarg0)
-{
-    if (f_debug)
+uint16_t secs;
+    
+    secs = pumpCB_0.secs;
+
+    if (pumpCB_0.debug)
         xprintf_P(PSTR("Pump 0 run %d secs\r\n"), secs);
     
     PUMP0_ENABLE();
@@ -524,9 +322,9 @@ void f_pump_0_run(bool f_debug, uint16_t secs, uint16_t dummyarg0)
 
 }
 // -----------------------------------------------------------------------------
-void f_pump_0_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_pump_0_stop(void)
 {
-    if (f_debug)
+    if (pumpCB_0.debug)
         xprintf_P(PSTR("Pump 0 stop\r\n"));
     
     TCB1.CTRLA = 0x00;
@@ -537,38 +335,30 @@ void f_pump_0_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
     pump0.enabled = false;
 }
 // -----------------------------------------------------------------------------
-void f_pump_1_config( bool f_debug, uint16_t freq, uint16_t dummyarg0)
+void fn_pump_1_run(void)
 {
-
-    if (f_debug)
-        xprintf_P(PSTR("Pump 1 config %d Hz\r\n"), freq);
     
-    pump1.freq = freq;
-    pump1_stop();
-    TCB2.CCMP = configCPU_CLOCK_HZ / freq;
-}
-// -----------------------------------------------------------------------------
-void f_pump_1_run(bool f_debug, uint16_t secs, uint16_t dummyarg0)
-{
-    if (f_debug)
-        xprintf_P(PSTR("Pump 1 run %d sec\r\n"), secs);
+uint16_t secs;
+    
+    secs = pumpCB_1.secs;
+
+    if (pumpCB_1.debug)
+        xprintf_P(PSTR("Pump 1 run %d secs\r\n"), secs);
     
     PUMP1_ENABLE();
     PUMP1_FORWARD();
     
     TCB2.INTFLAGS = TCB_CAPT_bm;                         
     TCB2.CTRLA = TCB_ENABLE_bm;  
-    //pump1.ticks = secs * pump1.freq;
     pump1.ticks = (uint32_t)secs * pump1.freq;
-    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pump1.ticks);
     pump1.running = true;
     pump1.enabled = true;
 
 }
 // -----------------------------------------------------------------------------
-void f_pump_1_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_pump_1_stop(void)
 {
-    if (f_debug)
+    if (pumpCB_1.debug)
         xprintf_P(PSTR("Pump 1 stop\r\n"));
     
     TCB2.CTRLA = 0x00;
@@ -579,19 +369,14 @@ void f_pump_1_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
     pump1.enabled = false;
 }
 // -----------------------------------------------------------------------------
-void f_pump_2_config( bool f_debug, uint16_t freq, uint16_t dummyarg0)
+void fn_pump_2_run(void)
 {
-    if (f_debug)
-        xprintf_P(PSTR("Pump 2 config %d Hz\r\n"), freq);
+    
+uint16_t secs;
+    
+    secs = pumpCB_2.secs;
 
-    pump2.freq = freq;
-    pump2_stop();
-    TCB3.CCMP = configCPU_CLOCK_HZ / freq;
-}
-// -----------------------------------------------------------------------------
-void f_pump_2_run(bool f_debug, uint16_t secs, uint16_t dummyarg0)
-{
-    if (f_debug)
+    if (pumpCB_2.debug)
         xprintf_P(PSTR("Pump 2 run %d secs\r\n"), secs);
     
     PUMP2_ENABLE();
@@ -599,17 +384,15 @@ void f_pump_2_run(bool f_debug, uint16_t secs, uint16_t dummyarg0)
     
     TCB3.INTFLAGS = TCB_CAPT_bm;                         
     TCB3.CTRLA = TCB_ENABLE_bm;  
-    //pump1.ticks = secs * pump1.freq;
     pump2.ticks = (uint32_t)secs * pump2.freq;
-    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pump1.ticks);
     pump2.running = true;
     pump2.enabled = true;
 
 }
 // -----------------------------------------------------------------------------
-void f_pump_2_stop(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1)
+void fn_pump_2_stop(void)
 {
-    if (f_debug)
+    if (pumpCB_2.debug)
         xprintf_P(PSTR("Pump 2 stop\r\n"));
     
     TCB3.CTRLA = 0x00;

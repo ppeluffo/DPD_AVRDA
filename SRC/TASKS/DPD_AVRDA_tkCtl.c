@@ -28,7 +28,7 @@ void tkCtl(void * pvParameters)
     WDG_INIT(); // Pone todos los bits habilitados en 1
      
 	// Arranco el RTC. Si hay un problema lo inicializo.
- //D   RTC_init();
+    RTC_init();
 
     vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
 
@@ -38,8 +38,6 @@ void tkCtl(void * pvParameters)
        xprintf_P(PSTR("Loading config default..\r\n"));
        u_config_default();
     }
-    
-    //ADS1115_setup();
     
     // Por ultimo habilito a todas las otras tareas a arrancar
     starting_flag = true;
@@ -67,8 +65,8 @@ static uint16_t wdg_count = 0;
 uint8_t i;
 
     //xprintf_P(PSTR("wdg reset\r\n"));
-//    wdt_reset();
-//    return;
+    wdt_reset();
+    return;
         
     wdt_reset();
 

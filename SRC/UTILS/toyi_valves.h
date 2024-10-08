@@ -57,19 +57,24 @@ vstatus_t vstatus;
 #define OPEN_VALVE2()  ( VALVE2_CTRL_PORT.OUT |= VALVE2_CTRL_PIN_bm )
 #define CLOSE_VALVE2() ( VALVE2_CTRL_PORT.OUT &= ~VALVE2_CTRL_PIN_bm )
 
+typedef struct {
+    bool debug;
+} valveCB_t;
+
+valveCB_t valveCB_0,valveCB_1,valveCB_2;
+
 void TOYI_VALVES_init(void);
 void valve_get_status(vstatus_t *lvstatus);
-bool valve_tests( char *valve_id, char *action);
 bool valve_open(uint8_t valve_id);
 bool valve_close(uint8_t valve_id);
 void valve_print_status(void);
 
-void f_valve_0_open(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_valve_0_close(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_valve_1_open(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_valve_1_close(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_valve_2_open(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
-void f_valve_2_close(bool f_debug, uint16_t dummyarg0, uint16_t dummyarg1);
+void fn_valve_0_open(void);
+void fn_valve_0_close(void);
+void fn_valve_1_open(void);
+void fn_valve_1_close(void);
+void fn_valve_2_open(void);
+void fn_valve_2_close(void);
 
 #ifdef	__cplusplus
 }

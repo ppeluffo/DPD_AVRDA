@@ -40,36 +40,29 @@ typedef ADC_MUXPOS_t adc_0_channel_t;
 typedef ADC_MUXNEG_t adc_0_muxneg_channel_t;
 
 int8_t ADC_init();
-
 void ADC_enable();
-
 void ADC_disable();
-
 void ADC_start_conversion(adc_0_channel_t channel);
-
 void ADC_start_diff_conversion(adc_0_channel_t channel, adc_0_muxneg_channel_t channel1);
 void ADC_stop_conversion();
-
 bool ADC_is_conversion_done();
-
 adc_result_t ADC_get_conversion_result(void);
-
 adc_result_t ADC_get_conversion(adc_0_channel_t channel);
-
 diff_adc_result_t ADC_get_diff_conversion(adc_0_channel_t channel, adc_0_muxneg_channel_t channel1);
-
 uint8_t ADC_get_resolution();
-
 uint16_t ADC_read_single(void);
-uint16_t ADC_read_multiple(uint8_t samples, bool debug);
+uint16_t ADC_read_multiple(uint8_t samples);
 
-float ADC_convert_to_volts(uint16_t counts);
+typedef struct {
+    bool debug;
+    uint16_t counts;
+    bool running;
+    uint16_t result;
+} adcCB_t;
 
-void ADC_test_read_single(void);
-void ADC_test_read_multiple( uint8_t times);
-uint16_t ADC_calibrar(void);
+adcCB_t adcCB;
 
-void f_adc_read(bool f_debug, uint16_t times0, uint16_t dummyarg0);
+void fn_adc_read(void);
 
 #ifdef	__cplusplus
 }
