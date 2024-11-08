@@ -13,6 +13,16 @@ int8_t WDT_init(void);
 int8_t CLKCTRL_init(void);
 uint8_t checksum( uint8_t *s, uint16_t size );
 
+struct {
+    
+    systemConf_t systemConf;
+    pumps_conf_t pumps_conf; 
+    
+    // El checksum SIEMPRE debe ser el ultimo byte !!!!!
+    uint8_t checksum;
+    
+} memConfBuffer;
+
 //-----------------------------------------------------------------------------
 void system_init()
 {
@@ -35,6 +45,7 @@ void system_init()
         
     ADC_init();
     
+    MODEM_init();
 }
 //-----------------------------------------------------------------------------
 int8_t WDT_init(void)
@@ -81,35 +92,34 @@ void u_kick_wdt( uint8_t wdg_gc)
 void u_config_default(void)
 {
 
+    memcpy(systemConf.dlgid, "DEFAULT", sizeof(DLGID_LENGTH));
+    systemConf.timerpoll = 60;
+    systemConf.timermedida = 10800;
+    systemConf.adc_cal_factor = 3400;
+    systemConf.adc_cal_volts = 3.0;
+    
     // Configuro a default todas las configuraciones locales
     pump_config_default();
-    //
-    systemVars.adc_cal_factor = 3400;
-    systemVars.adc_cal_volts = 3.0;
     
 }
 //------------------------------------------------------------------------------
 bool u_save_config_in_NVM(void)
 {
-   /*
-    * Leo los valores de las freq.de las pumps y actualizao el systemVars
-    * para luego guardrlo en la NVM
-    
-    */
-    
 int8_t retVal;
 uint8_t cks;
 
-    systemVars.pump_freq[0] = pump0.freq;
-    systemVars.pump_freq[1] = pump1.freq;
-    systemVars.pump_freq[2] = pump2.freq;
+    memset( &memConfBuffer, '\0', sizeof(memConfBuffer));
 
-    cks = checksum ( (uint8_t *)&systemVars, ( sizeof(systemVars) - 1));
-    systemVars.checksum = cks;
+    // Cargamos el buffer con las configuraciones
+    memcpy( &memConfBuffer.systemConf, &systemConf, sizeof(systemConf_t));
+    memcpy( &memConfBuffer.pumps_conf, &pumps_conf, sizeof(pumps_conf_t));
 
-    retVal = NVMEE_write( 0x00, (char *)&systemVars, sizeof(systemVars) );
-    xprintf_P(PSTR("SAVE NVM: memblock size = %d\r\n"), sizeof(systemVars));    
-    //xprintf_P(PSTR("DEBUG: Save in NVM OK\r\n"));
+    cks = checksum ( (uint8_t *)&memConfBuffer, ( sizeof(memConfBuffer) - 1));
+    memConfBuffer.checksum = cks;
+
+    retVal = NVMEE_write( 0x00, (char *)&memConfBuffer, sizeof(memConfBuffer) );
+
+    xprintf_P(PSTR("SAVE NVM: memblock size = %d\r\n"), sizeof(memConfBuffer));    
     
     if (retVal == -1 )
         return(false);
@@ -124,21 +134,24 @@ bool u_load_config_from_NVM(void)
     
 uint8_t rd_cks, calc_cks;
 
-    xprintf_P(PSTR("NVM: memblock size=%d\r\n"), sizeof(systemVars));
+    xprintf_P(PSTR("NVM: memblock size=%d\r\n"), sizeof(memConfBuffer));
 
-    memset( &systemVars, '\0', sizeof(systemVars));
+    memset( &memConfBuffer, '\0', sizeof(memConfBuffer));
     
-    NVMEE_read( 0x00, (char *)&systemVars, sizeof(systemVars) );
-    rd_cks = systemVars.checksum;
+    NVMEE_read( 0x00, (char *)&memConfBuffer, sizeof(memConfBuffer) );
+    rd_cks = memConfBuffer.checksum;
         
-    calc_cks = checksum ( (uint8_t *)&systemVars, ( sizeof(systemVars) - 1));
+    calc_cks = checksum ( (uint8_t *)&memConfBuffer, ( sizeof(memConfBuffer) - 1));
     
     if ( calc_cks != rd_cks ) {
 		xprintf_P( PSTR("ERROR: Checksum systemConf failed: calc[0x%0x], read[0x%0x]\r\n"), calc_cks, rd_cks );
-		return(false);
-	}
-
-    pump_update_config();
+        return(false);
+	} 
+    
+    // Desarmo el buffer de memoria
+    memcpy( &systemConf, &memConfBuffer.systemConf, sizeof(systemConf_t));       
+    memcpy( &pumps_conf, &memConfBuffer.pumps_conf, sizeof(pumps_conf_t));
+    
     return(true);
 }
 //------------------------------------------------------------------------------
@@ -189,13 +202,13 @@ float cloro;
     // Busco el mejor tramo
     for (i=1; i<CAL_MAX_POINTS; i++) {
         
-        if ( systemVars.xCal[i] == - 1) {
+        if ( systemConf.xCal[i] == - 1) {
             // Se termino la curva y no hay tramos utiles
             xprintf_P(PSTR("ERROR en curva de calibracion. No hay tramos para %0.3f\r\n"), abs);
             return (-1.0);
         }
         
-        if ( systemVars.xCal[i] > abs ) {
+        if ( systemConf.xCal[i] > abs ) {
             // Encontre el tramo adecuado
             P0 = (i-1);
             P1 = i;
@@ -210,10 +223,10 @@ float cloro;
     }
 
     // El mejor tramo esta entre P0 y P1
-    x0 = systemVars.xCal[P0];
-    x1 = systemVars.xCal[P1];
-    y0 = systemVars.yCal[P0];
-    y1 = systemVars.yCal[P1];
+    x0 = systemConf.xCal[P0];
+    x1 = systemConf.xCal[P1];
+    y0 = systemConf.yCal[P0];
+    y1 = systemConf.yCal[P1];
     if (debug) {
         xprintf_P(PSTR("(X0=%0.3f,Y0=%0.3f}\r\n"), x0,y0);
         xprintf_P(PSTR("(X1=%0.3f,Y1=%0.3f}\r\n"), x1,y1);
@@ -225,5 +238,63 @@ float cloro;
     
     return(cloro);
     
+}
+//------------------------------------------------------------------------------
+void u_data_resync_clock( char *str_time, bool force_adjust)
+{
+	/*
+	 * Ajusta el clock interno de acuerdo al valor de rtc_s
+     * Si force_adjust es TRUE siempre lo ajusta.
+     * Si es FALSE, solo lo ajusta si la diferencia con la hora actual son mas
+     * de 90 segundos
+     * 
+	 * Bug 01: 2021-12-14:
+	 * El ajuste no considera los segundos entonces si el timerpoll es c/15s, cada 15s
+	 * se reajusta y cambia la hora del datalogger.
+	 * Modifico para que el reajuste se haga si hay una diferencia de mas de 90s entre
+	 * el reloj local y el del server
+	 */
+
+
+float diff_seconds;
+RtcTimeType_t rtc_l, rtc_wan;
+int8_t xBytes = 0;
+   
+    // Convierto el string YYMMDDHHMM a RTC.
+    //xprintf_P(PSTR("DATA: DEBUG CLOCK2\r\n") );
+    memset( &rtc_wan, '\0', sizeof(rtc_wan) );        
+    RTC_str2rtc( str_time, &rtc_wan);
+    //xprintf_P(PSTR("DATA: DEBUG CLOCK3\r\n") );
+            
+            
+	if ( force_adjust ) {
+		// Fuerzo el ajuste.( al comienzo )
+		xBytes = RTC_write_dtime(&rtc_wan);		// Grabo el RTC
+		if ( xBytes == -1 ) {
+			xprintf_P(PSTR("ERROR: CLOCK: I2C:RTC:pv_process_server_clock\r\n"));
+		} else {
+			xprintf_P( PSTR("CLOCK: Update rtc.\r\n") );
+		}
+		return;
+	}
+
+	// Solo ajusto si la diferencia es mayor de 90s
+	// Veo la diferencia de segundos entre ambos.
+	// Asumo yy,mm,dd iguales
+	// Leo la hora actual del datalogger
+	RTC_read_dtime( &rtc_l);
+	diff_seconds = abs( rtc_l.hour * 3600 + rtc_l.min * 60 + rtc_l.sec - ( rtc_wan.hour * 3600 + rtc_wan.min * 60 + rtc_wan.sec));
+	//xprintf_P( PSTR("COMMS: rtc diff=%.01f\r\n"), diff_seconds );
+
+	if ( diff_seconds > 90 ) {
+		// Ajusto
+		xBytes = RTC_write_dtime(&rtc_wan);		// Grabo el RTC
+		if ( xBytes == -1 ) {
+			xprintf_P(PSTR("ERROR: CLOCK: I2C:RTC:pv_process_server_clock\r\n"));
+		} else {
+			xprintf_P( PSTR("CLOCK: Update rtc\r\n") );
+		}
+		return;
+	}
 }
 //------------------------------------------------------------------------------

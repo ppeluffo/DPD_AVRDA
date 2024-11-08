@@ -20,7 +20,7 @@ void proc_inicio_sistema(bool debug)
      */
     
     if (debug) {
-        xprintf_P(PSTR("PROC_0 START: inicio_sistema\r\n"));
+        xprintf_P(PSTR(">>Inicio_sistema: START\r\n"));
     }
     
     // Apago el opto
@@ -43,7 +43,7 @@ void proc_inicio_sistema(bool debug)
     vTaskDelay( ( TickType_t)( 15000 / portTICK_PERIOD_MS ) );
     
     if (debug) {
-        xprintf_P(PSTR("PROC_0 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ void proc_lavado_reservorio_de_muestra(bool debug)
 uint16_t timer;
     
     if (debug) {
-        xprintf_P(PSTR("PROC_1 START: lavado_reservorio_de_muestra\r\n"));
+        xprintf_P(PSTR(">>Lavado_reservorio_de_muestra: START\r\n"));
     }
  
     // Cierro V1: ( Para que se pueda llenar el reservorio)
@@ -102,7 +102,7 @@ uint16_t timer;
     vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
     
     if (debug) {
-        xprintf_P(PSTR("PROC_1 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ void proc_llenado_reservorio_con_muestra_a_medir(bool debug)
 uint16_t timer;
 
     if (debug) {
-        xprintf_P(PSTR("PROC_2 START: llenado_reservorio_con_muestra_a_medir\r\n"));
+        xprintf_P(PSTR(">>Llenado_reservorio_con_muestra_a_medir:START\r\n"));
     }
  
     // Cierro V1 ( para que no se escape agua mientras lleno)
@@ -146,7 +146,7 @@ uint16_t timer;
     action_await();
         
     if (debug) {
-        xprintf_P(PSTR("PROC_2 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ void proc_purga_canal_muestra(bool debug)
      */
     
     if (debug) {
-        xprintf_P(PSTR("PROC_3 START: purga_canal_muestra\r\n"));
+        xprintf_P(PSTR(">>Purga_canal_muestra: START\r\n"));
     }
 
     // Abro V2 para que se purgue
@@ -174,14 +174,14 @@ void proc_purga_canal_muestra(bool debug)
     // La bomba se apaga sola
     
     if (debug) {
-        xprintf_P(PSTR("PROC_3 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
 void proc_lavado_celda(bool debug)
 {
     if (debug) {
-        xprintf_P(PSTR("PROC_4 START: lavado_celda\r\n"));
+        xprintf_P(PSTR(">>Lavado_celda: START\r\n"));
     }
 
     // Cierro V2
@@ -208,7 +208,7 @@ void proc_lavado_celda(bool debug)
     vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
 
     if (debug) {
-        xprintf_P(PSTR("PROC_4 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }    
 }
 //------------------------------------------------------------------------------
@@ -216,7 +216,7 @@ void proc_ajustes_fotometricos(bool debug)
 {
         
     if (debug) {
-        xprintf_P(PSTR("PROC_5 START: ajustes_fotometricos\r\n"));
+        xprintf_P(PSTR(">>Ajustes_fotometricos: START\r\n"));
     }
  
     // Cierro V2
@@ -239,7 +239,7 @@ void proc_ajustes_fotometricos(bool debug)
     // Registro la señal fotometrica en 128 medidas ( 0%T )
     action_adc_read(debug, 128);
     action_await();
-    S0 = adcCB.result;
+    systemVars.S0 = adcCB.result;
 
     // Prendo el opto
     action_opto_on(debug);
@@ -249,7 +249,7 @@ void proc_ajustes_fotometricos(bool debug)
     // Registro la señal fotometrica en 128 medidas ( 100%T )
     action_adc_read(debug, 128);
     action_await();
-    S100 = adcCB.result;
+    systemVars.S100 = adcCB.result;
     
     // Apago el opto
     action_opto_off(debug);
@@ -261,12 +261,12 @@ void proc_ajustes_fotometricos(bool debug)
     vTaskDelay( ( TickType_t)( ( T_VACIADO_CELDA * 1000 ) / portTICK_PERIOD_MS ) );
 
     if ( debug) {
-        xprintf_P(PSTR("S0=%d\r\n"), S0);
-        xprintf_P(PSTR("S100=%d\r\n"), S100);
+        xprintf_P(PSTR("S0=%d\r\n"), systemVars.S0);
+        xprintf_P(PSTR("S100=%d\r\n"), systemVars.S100);
     }
     
     if (debug) {
-        xprintf_P(PSTR("PROC_5 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }    
 }
 //------------------------------------------------------------------------------
@@ -278,10 +278,10 @@ uint16_t lp = 0;
 float pabs[CICLOS_MEDIDA];
 
     if(debug) {
-        xprintf_P(PSTR("PROC_6 START: medicion\r\n"));
+        xprintf_P(PSTR(">>Medicion: START\r\n"));
     }
 
-    absorbancia = 0.0;
+    systemVars.absorbancia = 0.0;
     
     for (ciclo = 0; ciclo <  CICLOS_MEDIDA; ciclo++) {
            
@@ -317,8 +317,8 @@ float pabs[CICLOS_MEDIDA];
         lp = adcCB.result;
         
         // Calculamos la absorbancia
-        pabs[ciclo] = -1.0 * log10f ( 1.0*( lp - S0)/(1.0*(S100 - S0)) );
-        absorbancia += pabs[ciclo];
+        pabs[ciclo] = -1.0 * log10f ( 1.0*( lp - systemVars.S0)/(1.0*(systemVars.S100 - systemVars.S0)) );
+        systemVars.absorbancia += pabs[ciclo];
         
         if (debug) {
             xprintf_P(PSTR("Ciclo=%d, LP=%d, abs=%0.4f\r\n"), ciclo, lp, pabs[ciclo]);
@@ -335,11 +335,11 @@ float pabs[CICLOS_MEDIDA];
     action_opto_off(debug);
     action_await();
     
-    absorbancia /= CICLOS_MEDIDA;
-    cloro_ppm = cloro_from_absorbancia(absorbancia, debug);
+    systemVars.absorbancia /= CICLOS_MEDIDA;
+    systemVars.cloro_ppm = cloro_from_absorbancia(systemVars.absorbancia, debug);
             
     if (debug) {
-        xprintf_P(PSTR("PROC_6 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }     
 }
 //------------------------------------------------------------------------------
@@ -349,7 +349,7 @@ void proc_lavado_final(bool debug)
 uint8_t i;
 
     if (debug) {
-        xprintf_P(PSTR("PROC_7 START: lavado_final\r\n"));
+        xprintf_P(PSTR(">>Lavado_final: START\r\n"));
     }
 
     // Repito 4 veces el ciclo de lavado
@@ -395,7 +395,7 @@ uint8_t i;
     vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
  
     if (debug) {
-        xprintf_P(PSTR("PROC_7 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
@@ -406,7 +406,7 @@ void proc_fin_sistema(bool debug)
      */
     
     if (debug) {
-        xprintf_P(PSTR("PROC_8 START: fin_sistema\r\n"));
+        xprintf_P(PSTR(">>Fin_sistema: START\r\n"));
     }
     
     // Apago el opto
@@ -426,7 +426,7 @@ void proc_fin_sistema(bool debug)
     action_await();
     
     if (debug) {
-        xprintf_P(PSTR("PROC_8 END\r\n"));
+        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
@@ -434,7 +434,7 @@ void proc_llenar_celda_medida(bool debug)
 {
         
     if (debug) {
-        xprintf_P(PSTR("PROC_9 START: llenar celda medida\r\n"));
+        xprintf_P(PSTR(">>Llenar celda medida: START\r\n"));
     }
  
     // Cierro V2
@@ -454,10 +454,9 @@ void proc_llenar_celda_medida(bool debug)
 void proc_vaciar_celda_medida(bool debug)
 {
     if (debug) {
-        xprintf_P(PSTR("PROC_10 START: Vaciar celda medida\r\n"));
+        xprintf_P(PSTR(">>Vaciar celda medida: START\r\n"));
     }
-
-        
+  
     // Abro V2 para vaciar la celda de reacción
     action_valve_2_open(debug);
     action_await();  
@@ -470,8 +469,22 @@ void proc_calibrar(bool debug)
     /*
      * Realiza todo el ciclo de medida
      */
-    
-    proc_inicio_sistema(debug);
+    if (debug) {
+        xprintf_P(PSTR(">>Calibrar: START\r\n"));
+    }
+        // Apago el opto
+    action_opto_off(debug);
+    action_await();
+     
+    // Cierro V0: No entra agua de muestra
+    action_valve_0_close(debug);
+    action_valve_1_close(debug);
+    action_await();
+    // Abro V2: Vacio el canal de muestra (por las dudas)
+    action_valve_2_open(debug);
+    action_await();
+
+    //proc_inicio_sistema(debug);
     //proc_lavado_reservorio_de_muestra(debug);
     //proc_llenado_reservorio_con_muestra_a_medir(debug);
     //proc_purga_canal_muestra(debug);
@@ -493,11 +506,72 @@ void proc_calibrar(bool debug)
  
 }
 //------------------------------------------------------------------------------
+void proc_llenado_con_reactivos(bool debug)
+{
+    /*
+     * Realiza todo el ciclo de medida
+     */
+    if (debug) {
+        xprintf_P(PSTR(">>:lenado_con_reactivos: START\r\n"));
+    }
+        // Apago el opto
+    action_opto_off(debug);
+    action_await();
+     
+    // Cierro V0: No entra agua de muestra
+    action_valve_0_close(debug);
+    action_valve_1_close(debug);
+    action_await();
+    // Abro V2: Vacio el canal de muestra (por las dudas)
+    action_valve_2_open(debug);
+    action_await();
+    action_valve_2_close(debug);
+    action_await();
+    
+    vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
+        
+    // Prendo M0 10s para dispensar 0.5ml de reactivo DPD
+    action_pump_0_run(debug, T_DISPENSAR_DPD);
+    vTaskDelay( ( TickType_t)( (T_DISPENSAR_DPD * 1000) / portTICK_PERIOD_MS ) );
+        
+    // Prendo M1 11.5 para dispensar 0.5ml de buffer
+    action_pump_1_run(debug, T_DISPENSAR_BUFFER);
+    vTaskDelay( ( TickType_t)( (T_DISPENSAR_BUFFER * 1000) / portTICK_PERIOD_MS ) );
+        
+    // Prendo M2  para dispensar 10mL de muestra
+    action_pump_2_run(debug, T_LLENADO_CELDA );
+    vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA *1000) / portTICK_PERIOD_MS ) );
+
+    //proc_inicio_sistema(debug);
+    //proc_lavado_reservorio_de_muestra(debug);
+    //proc_llenado_reservorio_con_muestra_a_medir(debug);
+    //proc_purga_canal_muestra(debug);
+    //proc_lavado_celda(debug);
+    //proc_ajustes_fotometricos(debug);
+    //proc_medicion(debug);
+   
+    // Apago el opto
+    //action_opto_off(debug);
+    //action_await();
+     
+    // Cierro V0: No entra agua de muestra
+    //action_valve_0_close(debug);
+    //action_await();
+       
+    // Abro V2: Vacio el canal de muestra (por las dudas)
+    //action_valve_2_open(debug);
+    //action_await();
+ 
+}
+//------------------------------------------------------------------------------
 void proc_medida_completa(bool debug)
 {
     /*
      * Realiza todo el ciclo de medida
      */
+    if (debug) {
+        xprintf_P(PSTR(">>Medida Completa: START\r\n"));
+    }
     
     proc_inicio_sistema(debug);
     proc_lavado_reservorio_de_muestra(debug);
@@ -508,6 +582,9 @@ void proc_medida_completa(bool debug)
     proc_medicion(debug);
     proc_fin_sistema(debug);
     
+    if (debug) {
+        xprintf_P(PSTR(">>END\r\n"));
+    }    
 }
 //------------------------------------------------------------------------------
 /*

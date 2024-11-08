@@ -222,7 +222,7 @@ uint16_t ADC_read_multiple(uint8_t samples)
     
 uint8_t i;
 uint16_t adc; 
-float adc_acc;
+float adc_acc = 0.0;
 
     if ( ( samples == 0) || (samples > 128)) {
         return(0);

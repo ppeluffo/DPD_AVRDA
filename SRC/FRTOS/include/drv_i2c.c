@@ -1,5 +1,5 @@
 
-#include "drv_i2c_avrDX.h"
+#include "drv_i2c.h"
 
 
 #define I2C_TIMEOUT 10000

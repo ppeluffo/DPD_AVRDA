@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 #include "ccp.h"
 #include <string.h>
-#include "drv_nvm_avrDX.h"
+#include "drv_nvm.h"
 
 /**
  * \brief Initialize nvmctrl interface

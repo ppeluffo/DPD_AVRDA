@@ -28,7 +28,18 @@ typedef enum { RUNNING=0, STOPPED } t_tmc2209_status;
 
 #define MAX_PUMPS 3
 
+// Configuracion de bombas peristalticas
 typedef struct {
+    uint16_t pump0_freq;
+    uint16_t pump1_freq;
+    uint16_t pump2_freq;
+} pumps_conf_t;
+
+pumps_conf_t pumps_conf;
+
+// Estructura de control de bombas peristálticas
+typedef struct {
+    bool debug;
     uint16_t secs;
     uint16_t freq;
     uint32_t ticks;
@@ -36,7 +47,9 @@ typedef struct {
     bool running;
 } pump_CB_t;
 
-pump_CB_t pump0, pump1, pump2;
+pump_CB_t pumpCB_0, pumpCB_1, pumpCB_2;
+
+#define PUMP2_STEP_TOGGLE() ( PUMP2_STEP_PORT.OUT ^= 1UL << PUMP2_STEP_PIN_bp)
 
 #define PUMP0_EN_PORT           PORTF
 #define PUMP0_EN_PIN_bm         PIN4_bm
@@ -108,14 +121,6 @@ pump_CB_t pump0, pump1, pump2;
 #define PUMP2_REVERSE()     ( PUMP2_DIR_PORT.OUT &= ~PUMP2_DIR_PIN_bm )
 #define PUMP2_STEP_ON()     ( PUMP2_STEP_PORT.OUT |= PUMP2_STEP_PIN_bm )
 #define PUMP2_STEP_OFF()    ( PUMP2_STEP_PORT.OUT &= ~PUMP2_STEP_PIN_bm )
-#define PUMP2_STEP_TOGGLE() ( PUMP2_STEP_PORT.OUT ^= 1UL << PUMP2_STEP_PIN_bp)
-
-typedef struct {
-    bool debug;
-    uint16_t secs;
-} pumpCB_t;
-
-pumpCB_t pumpCB_0, pumpCB_1, pumpCB_2;
 
 void pump0_init(void);
 void pump0_stop(void);
@@ -134,7 +139,6 @@ void pump_print_status(void);
 bool pump_config( char *s_id, char *s_freq );
 
 void pump_config_default(void);
-void pump_update_config(void);
 
 void fn_pump_0_run(void);
 void fn_pump_0_stop(void);

@@ -13,15 +13,7 @@
 #include <avr/interrupt.h>
 
 #include "FreeRTOS.h"
-
 #include "ringBuffer.h"
-
-
-#ifndef F_CPU
-#define F_CPU 24000000
-#endif
-
-#define USART_SET_BAUD_RATE(BAUD_RATE) ((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5);
 
 //-----------------------------------------------------------------------
 #define UART0_TXSIZE	8	// trasmito por poleo. Si uso interrupcion lo subo a 128
@@ -58,6 +50,13 @@ uint8_t uart4_txBuffer[UART4_TXSIZE];
 uint8_t uart4_rxBuffer[UART4_RXSIZE];
 rBchar_s TXRB_uart4, RXRB_uart4;
 void drv_uart4_init(uint32_t baudrate );
+
+#define UART5_TXSIZE	8	// trasmito por poleo. Si uso interrupcion lo subo a 128
+uint8_t uart5_txBuffer[UART5_TXSIZE];
+#define UART5_RXSIZE	255	// 
+uint8_t uart5_rxBuffer[UART5_RXSIZE];
+rBchar_s TXRB_uart5, RXRB_uart5;
+void drv_uart5_init(uint32_t baudrate );
 
 //-----------------------------------------------------------------------
 

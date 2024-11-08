@@ -11,6 +11,10 @@ static void cmdReadFunction(void);
 static void cmdConfigFunction(void);
 static void cmdTestFunction(void);
 
+static bool test_modem(void);
+static bool test_kill(void);
+static bool test_display(void);
+
 static void pv_snprintfP_OK(void );
 static void pv_snprintfP_ERR(void );
 
@@ -92,10 +96,16 @@ static void cmdHelpFunction(void)
         
     }  else if ( !strcmp_P( strupr(argv[1]), PSTR("CONFIG"))) {
 		xprintf_P( PSTR("-config:\r\n"));
+        xprintf_P( PSTR("  dlgid\r\n"));
+        xprintf_P( PSTR("  timerpoll, timermedida\r\n"));
         xprintf_P( PSTR("  default, save, load\r\n"));
         xprintf_P( PSTR("  pump {0,1,2} {freq}\r\n"));
         xprintf_P( PSTR("  XCAL {0,9}, YCAL {0..9} \r\n"));
         xprintf_P( PSTR("  CAL {i,abs,cl} \r\n"));
+        xprintf_P( PSTR("  dlgid\r\n"));
+        xprintf_P( PSTR("  timerpolll\r\n"));
+        xprintf_P( PSTR("  debug {wan} {true/false}\r\n"));
+        xprintf_P( PSTR("  modem {apn|ip|port}\r\n"));
         
     	// HELP RESET
 	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
@@ -105,6 +115,10 @@ static void cmdHelpFunction(void)
         
     } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
 		xprintf_P( PSTR("-test\r\n"));
+        xprintf_P( PSTR("  display {ping|clear|send row col data}\r\n"));
+        xprintf_P( PSTR("  modem {prender|apagar|atmode|exitat|queryall|ids|save}\r\n"));
+        xprintf_P( PSTR("  modem set [apn {apn}, apiurl {apiurl}, server {ip,port}], ftime {time_ms}]\r\n"));
+        xprintf_P( PSTR("  modem write, read\r\n"));
         xprintf_P( PSTR("  valve {0,1,2} {open|close}\r\n"));
         xprintf_P( PSTR("  cnt {read|clear|pin}\r\n"));
         xprintf_P( PSTR("  opto {on|off}\r\n"));
@@ -125,6 +139,7 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("       10: vaciar_celda_medida\r\n"));
         xprintf_P( PSTR("       11: Calibrar\r\n"));
         xprintf_P( PSTR("       12: medida_completa\r\n"));
+        xprintf_P( PSTR("       13: llenado con reactivos\r\n"));
         return;
         
     }  else {
@@ -149,6 +164,38 @@ static void cmdTestFunction(void)
 
     FRTOS_CMD_makeArgv();
  
+    // DISPLAY
+    //display {ping|clear|send col row data}
+    if (!strcmp_P( strupr(argv[1]), PSTR("DISPLAY"))  ) {
+        if ( test_display() ) {
+            pv_snprintfP_OK();
+        } else {
+            pv_snprintfP_ERR();
+        }
+        return;
+    }
+    
+    // KILL {wan}
+    if (!strcmp_P( strupr(argv[1]), PSTR("KILL"))  ) {
+        if ( test_kill() ) {
+            pv_snprintfP_OK();
+        } else {
+            pv_snprintfP_ERR();
+        }
+        return;
+    }
+        
+    // MODEM
+    // modem {prender|apagar|atmode|exitat}
+     if (!strcmp_P( strupr(argv[1]), PSTR("MODEM"))  ) {
+        if ( test_modem() ) {
+            pv_snprintfP_OK();
+        } else {
+            pv_snprintfP_ERR();
+        }
+        return;
+    }
+    
     // test cloro abs
     if ( !strcmp_P( strupr(argv[1]), PSTR("CLORO"))) {
         cmd_test_cloro( argv[2]) ? pv_snprintfP_OK(): pv_snprintfP_ERR();
@@ -270,18 +317,21 @@ uint8_t i;
     
     xprintf("Spymovil %s %s TYPE=%s, VER=%s %s \r\n" , HW_MODELO, FRTOS_VERSION, FW_TYPE, FW_REV, FW_DATE);
       
- //D   xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
+    xprintf_P(PSTR("Date: %s\r\n"), RTC_logprint(FORMAT_LONG));
+    xprintf_P(PSTR(" dlgid: %s\r\n"), systemConf.dlgid );
+    xprintf_P(PSTR(" timerpoll=%d\r\n"), systemConf.timerpoll);
+    xprintf_P(PSTR(" timermedida=%lu/(%lu)\r\n"), systemConf.timermedida, systemVars.time2medida);
     
     xprintf_P(PSTR("Calibracion (i,x,y):\r\n"));
     for(i=0; i<CAL_MAX_POINTS; i++) {
-        xprintf_P(PSTR(" %d:[%0.3f,%0.3f]\r\n"), i, systemVars.xCal[i], systemVars.yCal[i]);
+        xprintf_P(PSTR(" %d:[%0.3f,%0.3f]\r\n"), i, systemConf.xCal[i], systemConf.yCal[i]);
     }
     //xprintf_P(PSTR("\r\n"));
     xprintf_P(PSTR("Medidas:\r\n"));
-    xprintf_P(PSTR(" S0=%d\r\n"),S0);
-    xprintf_P(PSTR(" S100=%d\r\n"),S100);
-    xprintf_P(PSTR(" absorbancia=%0.3f\r\n"), absorbancia);
-    xprintf_P(PSTR(" cloro_ppm=%0.3f\r\n"), cloro_ppm);
+    xprintf_P(PSTR(" S0=%d\r\n"),systemVars.S0);
+    xprintf_P(PSTR(" S100=%d\r\n"),systemVars.S100);
+    xprintf_P(PSTR(" absorbancia=%0.3f\r\n"), systemVars.absorbancia);
+    xprintf_P(PSTR(" cloro_ppm=%0.3f\r\n"), systemVars.cloro_ppm);
 
     xprintf_P(PSTR("Valves:\r\n"));
     valve_print_status();
@@ -338,11 +388,52 @@ static void cmdConfigFunction(void)
     
     FRTOS_CMD_makeArgv();
 
+        // DLGID
+	if (!strcmp_P( strupr(argv[1]), PSTR("DLGID"))) {
+        memset(systemConf.dlgid,'\0', sizeof(systemConf.dlgid) );
+        memcpy(systemConf.dlgid, argv[2], sizeof(systemConf.dlgid));
+        systemConf.dlgid[DLGID_LENGTH - 1] = '\0';
+        pv_snprintfP_OK();
+		return;
+    }
+    
+    // TIMERPOLL
+    // config timerpoll val
+	if (!strcmp_P( strupr(argv[1]), PSTR("TIMERPOLL")) ) {
+        
+        systemConf.timerpoll = atoi(argv[2]);
+
+        if ( systemConf.timerpoll < 15 )
+            systemConf.timerpoll = 15;
+
+        if ( systemConf.timerpoll > 3600 )
+            systemConf.timerpoll = 3600;
+            
+        pv_snprintfP_OK();
+		return;
+	}
+
+    // TIMERMEDIDA
+    // config timermedida val
+	if (!strcmp_P( strupr(argv[1]), PSTR("TIMERMEDIDA")) ) {
+        
+        systemConf.timermedida = atol(argv[2]);
+
+        if ( systemConf.timerpoll < 900 )
+            systemConf.timerpoll = 900;
+
+        if ( systemConf.timerpoll > 43200 )
+            systemConf.timerpoll = 43200;
+            
+        pv_snprintfP_OK();
+		return;
+	}
+
     // CAL {i,abs,cl}
     if (!strcmp_P( strupr(argv[1]), PSTR("CAL"))) {  
         if ( atoi(argv[2]) < CAL_MAX_POINTS ) {
-            systemVars.xCal[atoi(argv[2])] = atof(argv[3]);
-            systemVars.yCal[atoi(argv[2])] = atof(argv[4]);
+            systemConf.xCal[atoi(argv[2])] = atof(argv[3]);
+            systemConf.yCal[atoi(argv[2])] = atof(argv[4]);
             pv_snprintfP_OK();
         } else {
             pv_snprintfP_ERR();
@@ -574,6 +665,7 @@ float cloro;
     
    abs = atof(s_abs);
    cloro = cloro_from_absorbancia( abs, true);
+   xprintf_P(PSTR("Cloro=%0.3f\r\n"), cloro);
    return (true);
     
 }
@@ -620,6 +712,9 @@ bool cmd_test_procedimientos( char *s_pid )
         case 12:
             proc_medida_completa(true);
             break;
+        case 13:
+            proc_llenado_con_reactivos(true);
+            break;
         default:
             return(false);           
     }
@@ -631,7 +726,7 @@ void xcal_config(void)
 uint8_t i;
 
     for (i=0; i<CAL_MAX_POINTS; i++) {
-        systemVars.xCal[i] = atof(argv[2+i]);
+        systemConf.xCal[i] = atof(argv[2+i]);
     }
 }
 //------------------------------------------------------------------------------
@@ -640,7 +735,178 @@ void ycal_config(void)
 uint8_t i;
 
     for (i=0; i<CAL_MAX_POINTS; i++) {
-        systemVars.yCal[i] = atof(argv[2+i]);
+        systemConf.yCal[i] = atof(argv[2+i]);
     }
+}
+//------------------------------------------------------------------------------
+static bool test_modem(void)
+{
+    
+bool retS = false;
+char *p;
+
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("WRITE"))  ) {
+        vTaskDelay( ( TickType_t)( 5 ) );   
+        xfprintf_P( fdWAN, PSTR("The quick brown fox jumps over the lazy dog \r\n"));
+        vTaskDelay( ( TickType_t)( 2 ) );
+        retS = true;
+        goto exit;  
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("READ"))  ) {
+        xprintf_P(PSTR("SIZE=%d\r\n"), lBchar_GetCount(&modem_rx_lbuffer));
+        p = MODEM_get_buffer_ptr(); 
+        xprintf_P(PSTR("ModemRx-> %s\r\n"), p );
+        retS = true;
+        goto exit;  
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("CLEAR"))  ) {
+        MODEM_flush_rx_buffer();
+        retS = true;
+        goto exit; 
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("APN"))  ) {
+        modem_atcmd_read_apn(true);
+        retS = true;
+        goto exit;  
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("SERVER"))  ) {
+        modem_atcmd_read_server(true);
+        retS = true;
+        goto exit;  
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("IDS"))  ) {
+        modem_atcmd_read_imei(true);
+        modem_atcmd_read_iccid(true);
+        modem_atcmd_read_csq(true);
+        retS=true;
+        goto exit;
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("PRENDER"))  ) {
+        MODEM_prender();
+        retS=true;
+        goto exit;
+    }
+        
+    if (!strcmp_P( strupr(argv[2]), PSTR("APAGAR"))  ) {
+        MODEM_apagar();
+        retS=true;
+        goto exit;
+    }
+        
+    if (!strcmp_P( strupr(argv[2]), PSTR("ATMODE"))  ) {
+        MODEM_enter_mode_at(true);
+        retS=true;
+        goto exit;
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("EXITAT"))  ) {
+        MODEM_exit_mode_at(true);
+        retS=true;
+        goto exit;
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("SAVE"))  ) {
+        modem_atcmd_save(true);
+        retS=true;
+        goto exit;
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("QUERYALL"))  ) {
+        modem_atcmd_queryall();
+        retS=true;
+        goto exit;
+    }
+
+    // SET
+    if (!strcmp_P( strupr(argv[2]), PSTR("SET"))  ) {
+              
+        if (!strcmp_P( strupr(argv[3]), PSTR("APN"))  ) {
+            modem_atcmd_set_apn(argv[4], true);
+            retS=true;
+            goto exit;
+        }
+        
+        if (!strcmp_P( strupr(argv[3]), PSTR("SERVER"))  ) {
+            modem_atcmd_set_server(argv[4], argv[5], true);
+            retS=true;
+            goto exit;
+        }
+        
+        if (!strcmp_P( strupr(argv[3]), PSTR("APIURL"))  ) {
+            modem_atcmd_set_apiurl(argv[4], true);
+            retS=true;
+            goto exit;
+        }
+
+        if (!strcmp_P( strupr(argv[3]), PSTR("FTIME"))  ) {
+            modem_atcmd_set_ftime(argv[4], true);
+            retS=true;
+            goto exit;
+        }
+    }
+    
+exit:
+            
+    return (retS);
+
+}
+//------------------------------------------------------------------------------
+static bool test_kill(void)
+{
+    if (!strcmp_P( strupr(argv[2]), PSTR("WAN"))  ) {
+            
+        if ( xHandle_tkWan != NULL ) {
+            vTaskSuspend( xHandle_tkWan );
+            //SYSTEM_ENTER_CRITICAL();
+            //tk_running[TK_WAN] = false;
+            //SYSTEM_EXIT_CRITICAL();
+            xHandle_tkWan = NULL;
+            return(true);
+        } 
+        
+        return(false);
+    }
+    
+    return(false);
+}
+//------------------------------------------------------------------------------
+static bool test_display(void)
+{
+bool retS = false;
+uint8_t row,col;
+
+char *p;
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("PING"))  ) {
+        lcd_cmd_ping();
+        retS=true;
+        goto exit;
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("CLEAR"))  ) {
+        lcd_cmd_clear();
+        retS=true;
+        goto exit;
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("SEND"))  ) {
+        row = atoi(argv[3]);
+        col = atoi(argv[4]);
+        lcd_cmd_send_data(row, col, argv[5]);
+        retS=true;
+        goto exit;
+    }
+
+exit:
+    
+    return(retS);
+
 }
 //------------------------------------------------------------------------------

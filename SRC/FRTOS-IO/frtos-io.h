@@ -28,18 +28,27 @@
 #include "task.h"
 #include "semphr.h"
 
-#include "drv_uart_avrDX.h"
-#include "drv_nvm_avrDX.h"
-#include "drv_i2c_avrDX.h"
+#include "drv_uart.h"
+#include "drv_nvm.h"
+#include "drv_i2c.h"
 
 // Identificador de los file descriptor.
+
+
 typedef enum {
-	fdTERM = 0,  
+    
+	fdTERM = 0,        
+    fdWAN,
+    fdLCD,
     fdNVM,
-    fdI2C0
+    fdI2C0,
             
 } file_descriptor_t;
 
+
+typedef struct {
+    file_descriptor_t fd;
+} periferico_uart_t;
 
 typedef struct {
 	file_descriptor_t fd;
@@ -47,7 +56,6 @@ typedef struct {
 	uint8_t xBlockTime;						// ticks to block in read operations. Set by ioctl
     uint16_t eeAddress;
 } periferico_nvm_t;
-
 
 // Estructuctura generica de un periferico tipo bus i2c.
 typedef struct {
@@ -64,10 +72,10 @@ typedef struct {
 
 // Perifericos real.
 periferico_nvm_t xNVM;
-periferico_i2c_port_t xBusI2C0;
+periferico_i2c_port_t xBusI2C0, xBusI2C1 ;
 
 StaticSemaphore_t NVM_xMutexBuffer;
-StaticSemaphore_t I2C0_xMutexBuffer;
+StaticSemaphore_t I2C0_xMutexBuffer, I2C1_xMutexBuffer;
 
 #define ioctl_OBTAIN_BUS_SEMPH			1
 #define ioctl_RELEASE_BUS_SEMPH			2
@@ -102,13 +110,12 @@ StaticSemaphore_t I2C0_xMutexBuffer;
 #define I2C_RD_ERROR	1
 #define I2C_WR_ERROR	2
 
-int16_t frtos_open( file_descriptor_t fd, uint32_t flags);
-void frtos_open_uart0(uint32_t baudrate);
-void frtos_open_uart1(uint32_t baudrate);
-void frtos_open_uart2(uint32_t baudrate);
-void frtos_open_uart3(uint32_t baudrate);
-void frtos_open_uart4(uint32_t baudrate);
+#define USART_IsTXDataRegisterEmpty(_usart) (((_usart)->STATUS & USART_DREIF_bm) != 0)
+#define USART_IsTXShiftRegisterEmpty(_usart) (((_usart)->STATUS & USART_TXCIF_bm) != 0)
+#define USART_PutChar(_usart, _data) ((_usart)->TXDATAL = _data)
 
+int16_t frtos_open( file_descriptor_t fd, uint32_t flags);
+void frtos_open_uart( volatile USART_t *uart, uint32_t baudrate);
 int16_t frtos_open_nvm( periferico_nvm_t *xNVM, file_descriptor_t fd, StaticSemaphore_t *i2c_semph, uint32_t flags);
 int16_t frtos_open_i2c( volatile TWI_t *twi, periferico_i2c_port_t *xI2c, file_descriptor_t fd, StaticSemaphore_t *i2c_semph, uint32_t flags);
 
@@ -118,7 +125,7 @@ int16_t frtos_write_uart1( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_uart2( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_uart3( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_uart4( const char *pvBuffer, const uint16_t xBytes );
-int16_t frtos_write_uart4_modbus( const char *pvBuffer, const uint16_t xBytes );
+int16_t frtos_write_uart5( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_nvm( periferico_nvm_t *xNVM, const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_i2c( volatile TWI_t *twi, periferico_i2c_port_t *xI2c, const char *pvBuffer, const uint16_t xBytes );
 
@@ -128,6 +135,7 @@ int16_t frtos_ioctl_uart1( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_uart2( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_uart3( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_uart4( uint32_t ulRequest, void *pvValue );
+int16_t frtos_ioctl_uart5( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_nvm( periferico_nvm_t *xNVM, uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_i2c( volatile TWI_t *twi, periferico_i2c_port_t *xI2c, uint32_t ulRequest, void *pvValue );
 
@@ -137,6 +145,7 @@ int16_t frtos_read_uart1( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_uart2( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_uart3( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_uart4( char *pvBuffer, uint16_t xBytes );
+int16_t frtos_read_uart5( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_nvm( periferico_nvm_t *xNVM, char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_read_i2c( volatile TWI_t *twi, periferico_i2c_port_t *xI2c, char *pvBuffer, const uint16_t xBytes );
 

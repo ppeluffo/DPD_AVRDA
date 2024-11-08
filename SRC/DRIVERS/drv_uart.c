@@ -19,10 +19,16 @@
  * 
  */
 
-#include "drv_uart_avrDX.h"
+#include "drv_uart.h"
+
+#ifndef F_CPU
+#define F_CPU 24000000
+#endif
+
+#define USART_SET_BAUD_RATE(BAUD_RATE) ((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5);
 
 //------------------------------------------------------------------------------
-// USART0: RS485B
+// USART0:
 //------------------------------------------------------------------------------
 void drv_uart0_init(uint32_t baudrate )
 {
@@ -46,26 +52,6 @@ void drv_uart0_init(uint32_t baudrate )
     rBchar_CreateStatic ( &RXRB_uart0, &uart0_rxBuffer[0], UART0_RXSIZE  );
 }
 //------------------------------------------------------------------------------
-/*
-ISR(USART0_DRE_vect)
-{
-    // ISR de transmisión de la UART0 ( RS485B )
-    
-char cChar = ' ';
-int8_t res = false;
-
-	res = rBchar_PopFromISR( &TXRB_uart0, (char *)&cChar );
-
-	if( res == true ) {
-		// Send the next character queued for Tx
-		USART0.TXDATAL = cChar;
-	} else {
-		// Queue empty, nothing to send.Apago la interrupcion
-        USART0.CTRLB &= ~USART_TXEN_bm;
-	}
-}
- */
-//-----------------------------------------------------------------------------
 ISR(USART0_RXC_vect)
 {
     // Driver ISR: Cuando se genera la interrupcion por RXIE, lee el dato
@@ -76,7 +62,7 @@ char cChar = ' ';
  	rBchar_PokeFromISR( &RXRB_uart0, cChar );
 }
 //------------------------------------------------------------------------------
-// USART1: RS485A
+// USART1:
 //------------------------------------------------------------------------------
 void drv_uart1_init(uint32_t baudrate )
 {
@@ -100,26 +86,6 @@ void drv_uart1_init(uint32_t baudrate )
     rBchar_CreateStatic ( &RXRB_uart1, &uart1_rxBuffer[0], UART1_RXSIZE  );
 }
 //------------------------------------------------------------------------------
-/*
-ISR(USART1_DRE_vect)
-{
-    // ISR de transmisión de la UART1 ( RS485A )
-    
-char cChar = ' ';
-int8_t res = false;
-
-	res = rBchar_PopFromISR( &TXRB_uart1, (char *)&cChar );
-
-	if( res == true ) {
-		// Send the next character queued for Tx
-		USART1.TXDATAL = cChar;
-	} else {
-		// Queue empty, nothing to send.Apago la interrupcion
-        USART1.CTRLB &= ~USART_TXEN_bm;
-	}
-}
- */
-//-----------------------------------------------------------------------------
 ISR(USART1_RXC_vect)
 {
     // Driver ISR: Cuando se genera la interrupcion por RXIE, lee el dato
@@ -130,7 +96,7 @@ char cChar = ' ';
  	rBchar_PokeFromISR( &RXRB_uart1, cChar );
 }
 //------------------------------------------------------------------------------
-// USART2: TERM
+// USART2:
 //------------------------------------------------------------------------------
 void drv_uart2_init(uint32_t baudrate )
 {
@@ -154,26 +120,6 @@ void drv_uart2_init(uint32_t baudrate )
 
 }
 //------------------------------------------------------------------------------
-/*
-ISR(USART2_DRE_vect)
-{
-    // ISR de transmisión de la UART2 ( TERM )
-    
-char cChar = ' ';
-int8_t res = false;
-
-	res = rBchar_PopFromISR( &TXRB_uart2, (char *)&cChar );
-
-	if( res == true ) {
-		// Send the next character queued for Tx
-		USART2.TXDATAL = cChar;
-	} else {
-		// Queue empty, nothing to send.Apago la interrupcion
-        USART2.CTRLB &= ~USART_TXEN_bm;
-	}
-}
- */
-//-----------------------------------------------------------------------------
 ISR(USART2_RXC_vect)
 {
     // Driver ISR: Cuando se genera la interrupcion por RXIE, lee el dato
@@ -184,7 +130,7 @@ char cChar = ' ';
  	rBchar_PokeFromISR( &RXRB_uart2, cChar );
 }
 //------------------------------------------------------------------------------
-// USART3: XCOMMS
+// USART3:
 //------------------------------------------------------------------------------
 void drv_uart3_init(uint32_t baudrate )
 {
@@ -208,26 +154,6 @@ void drv_uart3_init(uint32_t baudrate )
     rBchar_CreateStatic ( &RXRB_uart3, &uart3_rxBuffer[0], UART3_RXSIZE  );
 }
 //------------------------------------------------------------------------------
-/*
-ISR(USART3_DRE_vect)
-{
-    // ISR de transmisión de la UART3 ( XCOMMS )
-    
-char cChar = ' ';
-int8_t res = false;
-
-	res = rBchar_PopFromISR( &TXRB_uart3, (char *)&cChar );
-
-	if( res == true ) {
-		// Send the next character queued for Tx
-		USART3.TXDATAL = cChar;
-	} else {
-		// Queue empty, nothing to send.Apago la interrupcion
-        USART3.CTRLB &= ~USART_TXEN_bm;
-	}
-}
- */
-//-----------------------------------------------------------------------------
 ISR(USART3_RXC_vect)
 {
     // Driver ISR: Cuando se genera la interrupcion por RXIE, lee el dato
@@ -237,6 +163,8 @@ char cChar = ' ';
 	cChar = USART3.RXDATAL;
  	rBchar_PokeFromISR( &RXRB_uart3, cChar );
 }
+//------------------------------------------------------------------------------
+// USART4:
 //------------------------------------------------------------------------------
 void drv_uart4_init(uint32_t baudrate )
 {
@@ -270,3 +198,38 @@ char cChar = ' ';
  	rBchar_PokeFromISR( &RXRB_uart4, cChar );
 }
 //------------------------------------------------------------------------------
+// USART5:
+//------------------------------------------------------------------------------
+void drv_uart5_init(uint32_t baudrate )
+{
+    
+    PORTG.DIR &= ~PIN1_bm;
+    PORTG.DIR |= PIN0_bm;
+    USART5.BAUD = (uint16_t)USART_SET_BAUD_RATE(baudrate);     
+    USART5.CTRLC = USART_CHSIZE_8BIT_gc | USART_PMODE_DISABLED_gc | USART_SBMODE_1BIT_gc;
+    
+    // Habilito el TX y el RX
+    USART5.CTRLB |= USART_TXEN_bm;
+    USART5.CTRLB |= USART_RXEN_bm;
+    
+    // Habilito las interrupciones por RX
+    USART5.CTRLA |= USART_RXCIE_bm;
+    
+    // Las transmisiones son por poleo no INT.
+    
+    // RingBuffers
+    rBchar_CreateStatic ( &TXRB_uart5, &uart5_txBuffer[0], UART5_TXSIZE  );
+    rBchar_CreateStatic ( &RXRB_uart5, &uart5_rxBuffer[0], UART5_RXSIZE  );
+}
+//------------------------------------------------------------------------------
+ISR(USART5_RXC_vect)
+{
+    // Driver ISR: Cuando se genera la interrupcion por RXIE, lee el dato
+    // y lo pone en la cola (ringBuffer.)
+char cChar = ' ';
+
+	cChar = USART5.RXDATAL;
+ 	rBchar_PokeFromISR( &RXRB_uart5, cChar );
+}
+//------------------------------------------------------------------------------
+

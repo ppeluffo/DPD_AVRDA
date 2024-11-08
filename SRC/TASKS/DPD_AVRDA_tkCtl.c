@@ -12,6 +12,10 @@
 
 void sys_watchdog_check(void);
 void sys_daily_reset(void);
+void sys_send_data(void);
+void sys_medir(void);
+
+dataRcd_s dr;
 
 //------------------------------------------------------------------------------
 void tkCtl(void * pvParameters)
@@ -42,15 +46,22 @@ void tkCtl(void * pvParameters)
     // Por ultimo habilito a todas las otras tareas a arrancar
     starting_flag = true;
     
+    // Inicializo para tomar la primer medida en 5 minutos
+    systemVars.time2medida = 300;
+    
 	for( ;; )
 	{
         // Duerme 5 secs y corre.
-        //vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
 		vTaskDelay( ( TickType_t)( 1000 * TKCTL_DELAY_S / portTICK_PERIOD_MS ) );
         led_flash();
         sys_watchdog_check();
         sys_daily_reset();
-        //xprintf_P( PSTR("The quick brown fox jumps over the lazy dog = %d\r\n"),a++);
+        
+        // Una vez por minuto mando datos al servidor
+        sys_send_data();
+        
+        // Cada timerpoll disparo una medida
+        sys_medir();
         
 	}
 }
@@ -113,5 +124,50 @@ static uint32_t ticks_to_reset = 86400 / TKCTL_DELAY_S ; // ticks en 1 dia.
     vTaskDelay( ( TickType_t)( 2000 / portTICK_PERIOD_MS ) );
     reset();
     
+}
+//------------------------------------------------------------------------------
+void sys_send_data(void)
+{
+    
+static int16_t timer = 30;
+bool f_status;
+    /*
+     * tkCtl invoca esta función cada TKCTL_DELAY_S segundos
+     */
+    
+    timer -= TKCTL_DELAY_S;
+
+    if ( timer <= 0 ) {
+        
+        //xprintf_P(PSTR("Send data\r\n"));
+        
+        timer = systemConf.timerpoll;
+        
+        // Armo el frame:
+        dr.absorbancia = systemVars.absorbancia;
+        dr.cloro_ppm = systemVars.absorbancia;
+        dr.S0 = systemVars.S0;
+        dr.S100 = systemVars.S100;
+        
+         // Agrego el timestamp.
+        f_status = RTC_read_dtime( &dr.rtc);
+        if ( ! f_status ) {
+            xprintf_P(PSTR("sys_send_data: ERROR I2C RTC:data_read_inputs\r\n"));
+        }
+        
+        WAN_process_data_rcd(&dr);
+    }
+}
+//------------------------------------------------------------------------------
+void sys_medir(void)
+{
+    systemVars.time2medida -= TKCTL_DELAY_S;
+    
+    if (systemVars.time2medida <= 10 ) {
+        // Tiempo de medir cloro
+        xprintf_P(PSTR("MEDIR CLORO\r\n"));
+        systemVars.time2medida = systemConf.timermedida;
+        // Pongo la orden de medir
+    }
 }
 //------------------------------------------------------------------------------

@@ -85,9 +85,11 @@ extern "C" {
 #include "tmc2209.h"
 #include "opto.h"
 #include "adc.h"
+#include "modem_lte.h"
+#include "lcd_cfa533.h"
 
 #define FW_REV "1.0.0"
-#define FW_DATE "@ 20241007"
+#define FW_DATE "@ 20241105"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -97,10 +99,16 @@ extern "C" {
 #define tkCtl_TASK_PRIORITY	 	( tskIDLE_PRIORITY + 1 )
 #define tkCmd_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 #define tkSys_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
+#define tkModemRX_TASK_PRIORITY	( tskIDLE_PRIORITY + 1 )
+#define tkWan_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
+#define tkLcdRX_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 
 #define tkCtl_STACK_SIZE		384
 #define tkCmd_STACK_SIZE		384
 #define tkSys_STACK_SIZE		384
+#define tkModemRX_STACK_SIZE	384
+#define tkWan_STACK_SIZE		512
+#define tkLcdRX_STACK_SIZE	384
 
 StaticTask_t tkCtl_Buffer_Ptr;
 StackType_t tkCtl_Buffer [tkCtl_STACK_SIZE];
@@ -111,32 +119,71 @@ StackType_t tkCmd_Buffer [tkCmd_STACK_SIZE];
 StaticTask_t tkSys_Buffer_Ptr;
 StackType_t tkSys_Buffer [tkSys_STACK_SIZE];
 
+StaticTask_t tkModemRX_Buffer_Ptr;
+StackType_t tkModemRX_Buffer [tkModemRX_STACK_SIZE];
+
+StaticTask_t tkWan_Buffer_Ptr;
+StackType_t tkWan_Buffer [tkWan_STACK_SIZE];
+
+StaticTask_t tkLcdRX_Buffer_Ptr;
+StackType_t tkLcdRX_Buffer [tkLcdRX_STACK_SIZE];
+
+TaskHandle_t xHandle_tkCtl, xHandle_tkCmd, xHandle_tkSys, xHandle_tkModemRX, xHandle_tkWan, xHandle_tkLcdRX;
+
 SemaphoreHandle_t sem_SYSVars;
 StaticSemaphore_t SYSVARS_xMutexBuffer;
 #define MSTOTAKESYSVARSSEMPH ((  TickType_t ) 10 )
 
-TaskHandle_t xHandle_tkCtl, xHandle_tkCmd, xHandle_tkSys;
-
 void tkCtl(void * pvParameters);
 void tkCmd(void * pvParameters);
 void tkSys(void * pvParameters);
+void tkModemRX(void * pvParameters);
+void tkWan(void * pvParameters);
+void tkLcdRX(void * pvParameters);
 
 bool starting_flag;
 
 // Estructura que tiene el valor de las medidas en el intervalo de poleo
 
-#define CAL_MAX_POINTS   10
+#define CAL_MAX_POINTS      10
 
-struct {   
+#define DLGID_LENGTH		12
+
+// Mensajes entre tareas
+#define SIGNAL_FRAME_READY		0x01
+
+typedef struct { 
+    uint16_t S0, S100;
+    float cloro_ppm;
+    float absorbancia;
+    uint32_t time2medida;
     bool debug;
+} systemVars_t;
+
+systemVars_t systemVars;
+
+typedef struct {
+    char dlgid[DLGID_LENGTH];
+    uint16_t timerpoll;
+    uint32_t timermedida;
     float adc_cal_volts;
     uint16_t adc_cal_factor;
     uint16_t pump_freq[MAX_PUMPS];
     float xCal[CAL_MAX_POINTS];     // Absorbancias
     float yCal[CAL_MAX_POINTS];     // Concentracion de cloro
-    
-    uint8_t checksum;
-} systemVars;
+} systemConf_t;
+
+systemConf_t systemConf;
+
+// Tipo que define la estrucutra de las medidas tomadas.
+typedef struct {
+    float absorbancia;
+    float cloro_ppm;
+    uint16_t S0;
+    uint16_t S100;
+    float bt12v;
+    RtcTimeType_t rtc;	    
+} dataRcd_s;
 
 void system_init();
 void reset(void);
@@ -147,6 +194,10 @@ void u_config_default(void);
 void SYSTEM_ENTER_CRITICAL(void);
 void SYSTEM_EXIT_CRITICAL(void);
 void u_kick_wdt( uint8_t wdg_gc);
+
+void u_data_resync_clock( char *str_time, bool force_adjust);
+
+//bool WAN_process_data_rcd( dataRcd_s *dataRcd);
 
 uint8_t sys_watchdog;
 uint8_t task_running;
@@ -168,16 +219,13 @@ struct {
 #define CNT_LLENADO_RESERVORIO  35000
 #define T_PURGA_CANAL           15
 #define T_VACIADO_RESERVORIO    20
-#define T_LAVADO_CELDA          20
-#define T_LLENADO_CELDA         25  // 10 mL
+#define T_LAVADO_CELDA          25
+#define T_LLENADO_CELDA         20  //10 mL
 #define T_VACIADO_CELDA         10
-#define T_DISPENSAR_DPD         20  //10
-#define T_DISPENSAR_BUFFER      20  //12
+#define T_DISPENSAR_DPD         13  //0.5 mL
+#define T_DISPENSAR_BUFFER      13  //0.5 mL
 #define CICLOS_LAVADO            4
 
-uint16_t S0, S100;
-float absorbancia;
-float cloro_ppm;
 
 void action_await(void);;
 
@@ -213,9 +261,9 @@ void proc_lavado_final(bool debug);
 void proc_fin_sistema(bool debug);
 void proc_calibrar(bool debug);
 void proc_medida_completa(bool debug);
+void proc_llenado_con_reactivos(bool debug);
 
 float cloro_from_absorbancia(float abs, bool debug);
-
 
 // No habilitado PLT_WDG !!!
 #define WDG_bm 0x03     // Pone todos los bits habilitados en 1
