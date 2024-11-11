@@ -37,10 +37,7 @@ uint8_t c = 0;
             // el read se bloquea 50ms. lo que genera la espera.
             while ( xfgetc( fdLCD, (char *)&c ) == 1 ) {
                 // Si hay datos recibidos, los encolo
-                if ( ! lBchar_Put( &lcd_rx_lbuffer, c) ) {
-                    // Si el buffer esta lleno, la borro !!!!
-                    lBchar_Flush(&lcd_rx_lbuffer);
-                }
+                FSM_processLCDrx(c);
             }
         }
         vTaskDelay( ( TickType_t)( 10 / portTICK_PERIOD_MS ) );

@@ -41,11 +41,13 @@ typedef struct {
 } lcd_packet_t;
 
 
+void FSM_processLCDrx(uint8_t c);
+
 void LCD_flush_rx_buffer(void);
 bool LCD_cmd_ping(void);
 bool LCD_cmd_clear(void);
 bool LCD_cmd_send_data(uint8_t row, uint8_t col, uint8_t *msg);
-
+bool lcd_cmd_read(void);
 
 #ifdef	__cplusplus
 }

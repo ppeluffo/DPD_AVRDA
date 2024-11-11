@@ -285,6 +285,7 @@ uint16_t i;
             ;
         USART_PutChar(&USART4, pvBuffer[i]);
     }
+   
     // Espero que salga el ultimo byte
     while( ( USART4.STATUS &  USART_TXCIF_bm) == 0 )
             ;

@@ -39,6 +39,100 @@ const uint16_t crcLookupTable[] PROGMEM = {
 };
 
 uint16_t CRC16(uint8_t *bufptr,uint16_t len);
+
+bool awaiting_response = false;
+
+void FSM_processLCDrx(uint8_t c)
+{
+    /*
+     * Se invoca desde la tarea de recepcion del LCD
+     * Solo lo uso para analizar las teclas que se presionaron
+     * por lo que solo debo analizar el primer byte.
+     */
+    
+uint16_t ptr;
+    
+    // Guardo el byte en el rx buffer.
+    if ( ! lBchar_Put( &lcd_rx_lbuffer, c) ) {
+        // Si el buffer esta lleno, la borro !!!!
+        lBchar_Flush(&lcd_rx_lbuffer);
+    }
+
+    ptr = lBchar_GetCount(&lcd_rx_lbuffer);
+    
+    if (ptr == 1)  {
+        switch( lcd_rx_buffer[0]) {
+            case 0x40:
+                // ping response.
+                xprintf_P(PSTR("PING response\r\n"));
+                awaiting_response = false;
+                break;
+            case 0x46:
+                // Clear response
+                xprintf_P(PSTR("CLEAR response\r\n"));
+                awaiting_response = false;
+                break; 
+            case 0x5F:
+                // Data response
+                xprintf_P(PSTR("DATA response\r\n"));
+                awaiting_response = false;
+                break;
+        }
+        return;
+    }
+   
+    if (ptr < 5) {
+        return;
+    }
+        
+    if (ptr == 5) {
+        // Key activity (frame completo):        
+        if (lcd_rx_buffer[0] == 0x80 ) {
+          
+            switch(lcd_rx_buffer[2]) {
+                case 1:
+                    xprintf_P(PSTR("KEY_UP_PRESS\r\n"));
+                    break;
+                case 2:
+                    xprintf_P(PSTR("KEY_DOWN_PRESS\r\n"));
+                    break;
+                case 3:
+                    xprintf_P(PSTR("KEY_LEFT_PRESS\r\n"));
+                    break;
+                case 4:
+                    xprintf_P(PSTR("KEY_RIGHT_PRESS\r\n"));
+                    break;
+                case 5:
+                    xprintf_P(PSTR("KEY_ENTER_PRESS\r\n"));
+                    break;
+                case 6:
+                    xprintf_P(PSTR("KEY_EXIT_PRESS\r\n"));
+                    break;
+                case 7:
+                    xprintf_P(PSTR("KEY_UP_RELEASE\r\n"));
+                    break;
+                case 8:
+                    xprintf_P(PSTR("KEY_DOWN_RELEASE\r\n"));
+                    break;
+                case 9:
+                    xprintf_P(PSTR("KEY_LEFT_RELEASE\r\n"));
+                    break;
+                case 10:
+                    xprintf_P(PSTR("KEY_RIGHT_RELEASE\r\n"));
+                    break;
+                case 11:
+                    xprintf_P(PSTR("KEY_ENTER_RELEASE\r\n"));
+                    break;
+                case 12:
+                    xprintf_P(PSTR("KEY_EXIT_RELEASE\r\n"));
+                    break;
+            }
+            
+            lBchar_Flush(&lcd_rx_lbuffer);
+        }
+    }
+    
+}
 //------------------------------------------------------------------------------
 void lcd_flush_rx_buffer(void)
 {
@@ -56,6 +150,8 @@ uint8_t i;
 uint16_t crc;
 uint8_t idx;
         
+    awaiting_response = true;
+    
     // Preparo el buffer con los datos del paquete
     memset(&lcd_tx_buffer, '\0', LCD_TX_BUFFER_SIZE );
     lcd_tx_buffer[0] = pkt->type;
@@ -67,21 +163,22 @@ uint8_t idx;
     }
         
     crc = CRC16( &lcd_tx_buffer[0], (2 + pkt->data_length) );
-    xprintf_P(PSTR("CRC=0x%04x\r\n"), crc);
+    //xprintf_P(PSTR("CRC=0x%04x\r\n"), crc);
  
     // Calculo el CRC
     idx = 2 + pkt->data_length;
     
-    lcd_tx_buffer[idx++] = (uint8_t)( (crc & 0xFF00) >> 8 );	// CRC High
     lcd_tx_buffer[idx++] = (uint8_t)( crc & 0x00FF );           // CRC Low
+    lcd_tx_buffer[idx++] = (uint8_t)( (crc & 0xFF00) >> 8 );	// CRC High
+    
     
     // Muestro  
-    xprintf_P(PSTR("LCD TXBUFFER (%d):\r\n"), idx);
+    //xprintf_P(PSTR("LCD TXBUFFER (%d):\r\n"), idx);
     
-    for(i=0; i<idx; i++) {
-        xprintf_P(PSTR("[0x%02X]"), lcd_tx_buffer[i]);
-    }
-    xprintf_P(PSTR("\r\n"));
+    //for(i=0; i<idx; i++) {
+    //    xprintf_P(PSTR("[0x%02X]"), lcd_tx_buffer[i]);
+    //}
+    //xprintf_P(PSTR("\r\n"));
     
     // Transmito
     // Como pueden haber 0x00, debo usar xnprintf !!!
@@ -115,10 +212,12 @@ bool retS = false;
     TX_pkt.data[0] = '\0';
    
     lcd_send_pkt(&TX_pkt);
-    vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+    vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     
-    retS = lcd_check_response(0x40);
-    return retS;
+    //retS = lcd_check_response(0x40);
+    //return retS;
+    lcd_flush_rx_buffer();
+    return (true);
 }
 //------------------------------------------------------------------------------
 bool lcd_cmd_clear(void)
@@ -132,10 +231,12 @@ bool retS = false;
     TX_pkt.data[0] = '\0';
    
     lcd_send_pkt(&TX_pkt);
-    vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+    vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     
-    retS = lcd_check_response(0x46);
-    return retS;    
+    //retS = lcd_check_response(0x46);
+    //return retS;   
+    lcd_flush_rx_buffer();
+    return (true);
 }
 //------------------------------------------------------------------------------
 bool lcd_cmd_send_data(uint8_t row, uint8_t col, uint8_t *msg)
@@ -156,11 +257,33 @@ bool retS = false;
     lcd_send_pkt(&TX_pkt);
     vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
     
-    retS = lcd_check_response(0x5F);
-    return retS;     
+    //retS = lcd_check_response(0x5F);
+    //return retS; 
+    lcd_flush_rx_buffer();
+    return (true);    
 
 }
 //------------------------------------------------------------------------------
+bool lcd_cmd_read(void)
+{
+    uint8_t i;
+    
+    xprintf_P(PSTR("LCD RXBUFFER: "));
+    for (i=0; i < LCD_RX_BUFFER_SIZE; i++) {
+        xprintf_P(PSTR("[0x%02X]"), lcd_rx_buffer[i]);
+    }
+    xprintf_P(PSTR("\r\n"));
+    
+    return (true);
+    
+}
+//-----------------------------------------------------------------------------
+bool lcd_cmd_clearbuff(void)
+{
+    lcd_flush_rx_buffer();
+    return(true);
+}
+//-----------------------------------------------------------------------------
 uint16_t CRC16(uint8_t *bufptr, uint16_t len) 
 {
 uint16_t newCrc;

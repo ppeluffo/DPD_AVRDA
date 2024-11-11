@@ -115,7 +115,7 @@ static void cmdHelpFunction(void)
         
     } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
 		xprintf_P( PSTR("-test\r\n"));
-        xprintf_P( PSTR("  display {ping|clear|send row col data}\r\n"));
+        xprintf_P( PSTR("  display {ping|clear|clrbuff|read|send row col data}\r\n"));
         xprintf_P( PSTR("  modem {prender|apagar|atmode|exitat|queryall|ids|save}\r\n"));
         xprintf_P( PSTR("  modem set [apn {apn}, apiurl {apiurl}, server {ip,port}], ftime {time_ms}]\r\n"));
         xprintf_P( PSTR("  modem write, read\r\n"));
@@ -883,6 +883,19 @@ bool retS = false;
 uint8_t row,col;
 
 char *p;
+
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("CLRBUF"))  ) {
+        lcd_cmd_clearbuff();
+        retS=true;
+        goto exit;
+    } 
+    
+if (!strcmp_P( strupr(argv[2]), PSTR("READ"))  ) {
+        lcd_cmd_read();
+        retS=true;
+        goto exit;
+    }   
 
     if (!strcmp_P( strupr(argv[2]), PSTR("PING"))  ) {
         lcd_cmd_ping();
