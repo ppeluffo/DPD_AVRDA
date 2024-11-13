@@ -62,7 +62,9 @@ typedef struct {
 
 adcCB_t adcCB;
 
-void fn_adc_read(void);
+void adc_read(bool debug, uint16_t samples);
+void cbk_adc_read(void);
+
 
 #ifdef	__cplusplus
 }

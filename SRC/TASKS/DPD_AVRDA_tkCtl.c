@@ -47,9 +47,11 @@ void tkCtl(void * pvParameters)
     starting_flag = true;
     
     // Inicializo para tomar la primer medida en 5 minutos
-    systemVars.time2medida = 300;
+    systemVars.time2medida = 120;
+    systemVars.midiendo = false;
+    memcpy(&systemVars.timestamp[0], "000000-000000", sizeof(systemVars.timestamp));
     
-	for( ;; )
+ 	for( ;; )
 	{
         // Duerme 5 secs y corre.
 		vTaskDelay( ( TickType_t)( 1000 * TKCTL_DELAY_S / portTICK_PERIOD_MS ) );
@@ -61,8 +63,7 @@ void tkCtl(void * pvParameters)
         sys_send_data();
         
         // Cada timerpoll disparo una medida
-        sys_medir();
-        
+        sys_medir();   
 	}
 }
 //------------------------------------------------------------------------------
@@ -78,9 +79,7 @@ uint8_t i;
     //xprintf_P(PSTR("wdg reset\r\n"));
     wdt_reset();
     return;
-        
-    wdt_reset();
-
+ 
     // EL wdg lo leo cada 30 secs ( 5 x 6 )
     if ( wdg_count++ <  (30 / TKCTL_DELAY_S ) ) {
         return;
@@ -148,6 +147,7 @@ bool f_status;
         dr.cloro_ppm = systemVars.absorbancia;
         dr.S0 = systemVars.S0;
         dr.S100 = systemVars.S100;
+        memcpy(&dr.timestamp[0], &systemVars.timestamp[0], sizeof(systemVars.timestamp));
         
          // Agrego el timestamp.
         f_status = RTC_read_dtime( &dr.rtc);
@@ -165,9 +165,10 @@ void sys_medir(void)
     
     if (systemVars.time2medida <= 10 ) {
         // Tiempo de medir cloro
-        xprintf_P(PSTR("MEDIR CLORO\r\n"));
+        xprintf_P(PSTR("MEDIR CLORO x TIMER\r\n"));
         systemVars.time2medida = systemConf.timermedida;
         // Pongo la orden de medir
+        action_medida_completa(true);
     }
 }
 //------------------------------------------------------------------------------

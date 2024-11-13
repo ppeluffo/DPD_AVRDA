@@ -38,8 +38,6 @@ const uint16_t crcLookupTable[] PROGMEM = {
     0x07BC7,0x06A4E,0x058D5,0x0495C,0x03DE3,0x02C6A,0x01EF1,0x00F78
 };
 
-uint16_t CRC16(uint8_t *bufptr,uint16_t len);
-
 bool awaiting_response = false;
 
 void FSM_processLCDrx(uint8_t c)
@@ -64,17 +62,17 @@ uint16_t ptr;
         switch( lcd_rx_buffer[0]) {
             case 0x40:
                 // ping response.
-                xprintf_P(PSTR("PING response\r\n"));
+                //xprintf_P(PSTR("PING response\r\n"));
                 awaiting_response = false;
                 break;
             case 0x46:
                 // Clear response
-                xprintf_P(PSTR("CLEAR response\r\n"));
+                //xprintf_P(PSTR("CLEAR response\r\n"));
                 awaiting_response = false;
                 break; 
             case 0x5F:
                 // Data response
-                xprintf_P(PSTR("DATA response\r\n"));
+                //xprintf_P(PSTR("DATA response\r\n"));
                 awaiting_response = false;
                 break;
         }
@@ -90,43 +88,46 @@ uint16_t ptr;
         if (lcd_rx_buffer[0] == 0x80 ) {
           
             switch(lcd_rx_buffer[2]) {
-                case 1:
-                    xprintf_P(PSTR("KEY_UP_PRESS\r\n"));
+                case KEY_UP_PRESS:
+                    //xprintf_P(PSTR("KEY_UP_PRESS\r\n"));
                     break;
-                case 2:
-                    xprintf_P(PSTR("KEY_DOWN_PRESS\r\n"));
+                case KEY_DOWN_PRESS:
+                    //xprintf_P(PSTR("KEY_DOWN_PRESS\r\n"));
                     break;
-                case 3:
-                    xprintf_P(PSTR("KEY_LEFT_PRESS\r\n"));
+                case KEY_LEFT_PRESS:
+                    //xprintf_P(PSTR("KEY_LEFT_PRESS\r\n"));
                     break;
-                case 4:
-                    xprintf_P(PSTR("KEY_RIGHT_PRESS\r\n"));
+                case KEY_RIGHT_PRESS:
+                    //xprintf_P(PSTR("KEY_RIGHT_PRESS\r\n"));
                     break;
-                case 5:
-                    xprintf_P(PSTR("KEY_ENTER_PRESS\r\n"));
+                case KEY_ENTER_PRESS:
+                    //xprintf_P(PSTR("KEY_ENTER_PRESS\r\n"));
                     break;
-                case 6:
-                    xprintf_P(PSTR("KEY_EXIT_PRESS\r\n"));
+                case KEY_EXIT_PRESS:
+                    //xprintf_P(PSTR("KEY_EXIT_PRESS\r\n"));
                     break;
-                case 7:
-                    xprintf_P(PSTR("KEY_UP_RELEASE\r\n"));
+                case KEY_UP_RELEASE:
+                    //xprintf_P(PSTR("KEY_UP_RELEASE\r\n"));
                     break;
-                case 8:
-                    xprintf_P(PSTR("KEY_DOWN_RELEASE\r\n"));
+                case KEY_DOWN_RELEASE:
+                    //xprintf_P(PSTR("KEY_DOWN_RELEASE\r\n"));
                     break;
-                case 9:
-                    xprintf_P(PSTR("KEY_LEFT_RELEASE\r\n"));
+                case KEY_LEFT_RELEASE:
+                    //xprintf_P(PSTR("KEY_LEFT_RELEASE\r\n"));
                     break;
-                case 10:
-                    xprintf_P(PSTR("KEY_RIGHT_RELEASE\r\n"));
+                case KEY_RIGHT_RELEASE:
+                    //xprintf_P(PSTR("KEY_RIGHT_RELEASE\r\n"));
                     break;
-                case 11:
-                    xprintf_P(PSTR("KEY_ENTER_RELEASE\r\n"));
+                case KEY_ENTER_RELEASE:
+                    //xprintf_P(PSTR("KEY_ENTER_RELEASE\r\n"));
                     break;
-                case 12:
-                    xprintf_P(PSTR("KEY_EXIT_RELEASE\r\n"));
+                case KEY_EXIT_RELEASE:
+                    //xprintf_P(PSTR("KEY_EXIT_RELEASE\r\n"));
                     break;
             }
+            
+            // Aviso a FSM display que llego una tecla
+            fsm_set_keypressed(lcd_rx_buffer[2]);
             
             lBchar_Flush(&lcd_rx_lbuffer);
         }
@@ -185,6 +186,7 @@ uint8_t idx;
     lcd_flush_rx_buffer();
     // La funcion xnprintf_MBUS maneja el control de flujo.
 	i = xnprintf( fdLCD, &lcd_tx_buffer[0], idx );
+    vTaskDelay( ( TickType_t)( 250 / portTICK_PERIOD_MS ) );
 
 }
 //------------------------------------------------------------------------------
@@ -212,7 +214,6 @@ bool retS = false;
     TX_pkt.data[0] = '\0';
    
     lcd_send_pkt(&TX_pkt);
-    vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     
     //retS = lcd_check_response(0x40);
     //return retS;
@@ -231,7 +232,6 @@ bool retS = false;
     TX_pkt.data[0] = '\0';
    
     lcd_send_pkt(&TX_pkt);
-    vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     
     //retS = lcd_check_response(0x46);
     //return retS;   
@@ -255,13 +255,28 @@ bool retS = false;
     //xprintf_P(PSTR("DATA_LENGTH=%d\r\n"), TX_pkt.data_length );
 
     lcd_send_pkt(&TX_pkt);
-    vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
     
     //retS = lcd_check_response(0x5F);
     //return retS; 
     lcd_flush_rx_buffer();
     return (true);    
 
+}
+//------------------------------------------------------------------------------
+bool lcd_cmd_brightness(uint8_t brillo)
+{
+    bool retS = false;
+
+    TX_pkt.type = 0x0E;
+    TX_pkt.data_length = 0x01;
+    TX_pkt.data[0] = brillo;
+   
+    lcd_send_pkt(&TX_pkt);
+     
+    //retS = lcd_check_response(0x4E);
+    //return retS;   
+    lcd_flush_rx_buffer();
+    return (true);
 }
 //------------------------------------------------------------------------------
 bool lcd_cmd_read(void)
@@ -302,3 +317,4 @@ uint16_t seed;
     return(~newCrc);
 }
 //------------------------------------------------------------------------------
+

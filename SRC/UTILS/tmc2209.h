@@ -140,12 +140,22 @@ bool pump_config( char *s_id, char *s_freq );
 
 void pump_config_default(void);
 
-void fn_pump_0_run(void);
-void fn_pump_0_stop(void);
-void fn_pump_1_run(void);
-void fn_pump_1_stop(void);
-void fn_pump_2_run(void);
-void fn_pump_2_stop(void);
+void pump_0_run(bool debug, uint16_t secs );
+void cbk_pump_0_run(void);
+void pump_0_stop(bool debug);
+void cbk_pump_0_stop(void);
+
+void pump_1_run(bool debug, uint16_t secs);
+void cbk_pump_1_run(void);
+void pump_1_stop(bool debug);
+void cbk_pump_1_stop(void);
+
+void pump_2_run(bool debug, uint16_t secs);
+void cbk_pump_2_run(void);
+void pump_2_stop(bool debug);
+void cbk_pump_2_stop(void);
+
+
 
 #ifdef	__cplusplus
 }

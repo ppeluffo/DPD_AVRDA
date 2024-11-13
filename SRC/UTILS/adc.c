@@ -254,15 +254,20 @@ float adc_acc = 0.0;
 //------------------------------------------------------------------------------
 // ACCIONES BASICAS
 //------------------------------------------------------------------------------
-void fn_adc_read(void)
+void adc_read(bool debug, uint16_t samples)
 {
 
     adcCB.running = true;
+    adcCB.debug = debug;
+    
+    cbk_adc_read();
+}
+//------------------------------------------------------------------------------
+void cbk_adc_read(void)
+{
     if (adcCB.debug)
         xprintf_P(PSTR("ADC read %d times\r\n"), adcCB.counts );
 
     adcCB.result = ADC_read_multiple(adcCB.counts);
-    adcCB.running = false;
-    return;
+    adcCB.running = false;   
 }
-//------------------------------------------------------------------------------

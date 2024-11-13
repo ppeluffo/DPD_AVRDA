@@ -89,7 +89,7 @@ extern "C" {
 #include "lcd_cfa533.h"
 
 #define FW_REV "1.0.0"
-#define FW_DATE "@ 20241105"
+#define FW_DATE "@ 20241113"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -102,13 +102,15 @@ extern "C" {
 #define tkModemRX_TASK_PRIORITY	( tskIDLE_PRIORITY + 1 )
 #define tkWan_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 #define tkLcdRX_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
+#define tkLcd_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 
 #define tkCtl_STACK_SIZE		384
 #define tkCmd_STACK_SIZE		384
 #define tkSys_STACK_SIZE		384
 #define tkModemRX_STACK_SIZE	384
 #define tkWan_STACK_SIZE		512
-#define tkLcdRX_STACK_SIZE	384
+#define tkLcdRX_STACK_SIZE      384
+#define tkLcd_STACK_SIZE        384
 
 StaticTask_t tkCtl_Buffer_Ptr;
 StackType_t tkCtl_Buffer [tkCtl_STACK_SIZE];
@@ -128,7 +130,10 @@ StackType_t tkWan_Buffer [tkWan_STACK_SIZE];
 StaticTask_t tkLcdRX_Buffer_Ptr;
 StackType_t tkLcdRX_Buffer [tkLcdRX_STACK_SIZE];
 
-TaskHandle_t xHandle_tkCtl, xHandle_tkCmd, xHandle_tkSys, xHandle_tkModemRX, xHandle_tkWan, xHandle_tkLcdRX;
+StaticTask_t tkLcd_Buffer_Ptr;
+StackType_t tkLcd_Buffer [tkLcdRX_STACK_SIZE];
+
+TaskHandle_t xHandle_tkCtl, xHandle_tkCmd, xHandle_tkSys, xHandle_tkModemRX, xHandle_tkWan, xHandle_tkLcdRX, xHandle_tkLcd;
 
 SemaphoreHandle_t sem_SYSVars;
 StaticSemaphore_t SYSVARS_xMutexBuffer;
@@ -140,6 +145,7 @@ void tkSys(void * pvParameters);
 void tkModemRX(void * pvParameters);
 void tkWan(void * pvParameters);
 void tkLcdRX(void * pvParameters);
+void tkLcd(void * pvParameters);
 
 bool starting_flag;
 
@@ -152,11 +158,15 @@ bool starting_flag;
 // Mensajes entre tareas
 #define SIGNAL_FRAME_READY		0x01
 
+#define TIMESTAMP_SIZE 16
+
 typedef struct { 
     uint16_t S0, S100;
     float cloro_ppm;
     float absorbancia;
+    char timestamp[TIMESTAMP_SIZE];
     uint32_t time2medida;
+    bool midiendo;
     bool debug;
 } systemVars_t;
 
@@ -181,9 +191,24 @@ typedef struct {
     float cloro_ppm;
     uint16_t S0;
     uint16_t S100;
+    char timestamp[16];
     float bt12v;
     RtcTimeType_t rtc;	    
 } dataRcd_s;
+
+typedef enum { LCD_INIT=0, LCD_OFF, LCD_STANDBY, LCD_CONF_MEDIDA, LCD_MIDIENDO } t_fsm_display_states;
+typedef enum { PANTALLA1=0, PANTALLA2, PANTALLA3, PANTALLA4, PANTALLA_CONF_MEDIDA, PANTALLA_MIDIENDO } t_pantallas;
+ 
+typedef struct {
+    t_fsm_display_states state;
+    t_pantallas pantalla;
+    int8_t timerBackliteOff;
+    key_t keypress;
+} FSMdisplay_CB_t;
+
+void fsm_set_keypressed(uint8_t key);
+void fsm_telepronter(char *msg);
+void fsm_display_modo_medir(void);
 
 void system_init();
 void reset(void);
@@ -199,22 +224,14 @@ void u_data_resync_clock( char *str_time, bool force_adjust);
 
 //bool WAN_process_data_rcd( dataRcd_s *dataRcd);
 
-uint8_t sys_watchdog;
-uint8_t task_running;
-
-#define CMD_WDG_bp     0x01
-#define SYS_WDG_bp     0x02
-
-#define CMD_WDG_gc          (0x01 << 0)
-#define SYS_WDG_gc          (0x01 << 1)
-
 struct {
     void (*fn)(void);
     bool standby;
     bool emergency_exit;
+    bool debug;
 } actionCB;
 
-#define CICLOS_MEDIDA            3
+#define CICLOS_MEDIDA            1
 #define T_LLENADO_RESERVORIO_MAX    15
 #define CNT_LLENADO_RESERVORIO  35000
 #define T_PURGA_CANAL           15
@@ -226,8 +243,7 @@ struct {
 #define T_DISPENSAR_BUFFER      13  //0.5 mL
 #define CICLOS_LAVADO            4
 
-
-void action_await(void);;
+void action_await(void);
 
 void action_opto_on(bool debug);
 void action_opto_off(bool debug);
@@ -268,6 +284,15 @@ float cloro_from_absorbancia(float abs, bool debug);
 // No habilitado PLT_WDG !!!
 #define WDG_bm 0x03     // Pone todos los bits habilitados en 1
 #define WDG_INIT() ( sys_watchdog = WDG_bm )
+
+uint8_t sys_watchdog;
+uint8_t task_running;
+
+#define CMD_WDG_bp     0x01
+#define SYS_WDG_bp     0x02
+
+#define CMD_WDG_gc          (0x01 << 0)
+#define SYS_WDG_gc          (0x01 << 1)
 
 #endif	/* XC_HEADER_TEMPLATE_H */
 

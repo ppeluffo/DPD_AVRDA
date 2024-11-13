@@ -28,9 +28,9 @@ void tkSys(void * pvParameters)
     
     vTaskDelay( ( TickType_t)( 250 / portTICK_PERIOD_MS ) );
     
-    SYSTEM_ENTER_CRITICAL();
-    task_running |= SYS_WDG_gc;
-    SYSTEM_EXIT_CRITICAL();
+    //SYSTEM_ENTER_CRITICAL();
+    //task_running |= SYS_WDG_gc;
+    //SYSTEM_EXIT_CRITICAL();
     
     xprintf_P(PSTR("Starting tkSys..\r\n"));
         
@@ -41,7 +41,7 @@ void tkSys(void * pvParameters)
     
 	for( ;; )
 	{         
-        u_kick_wdt(SYS_WDG_gc);
+        //u_kick_wdt(SYS_WDG_gc);
         
         if ( actionCB.standby ) {
             // No hago nada. Espero

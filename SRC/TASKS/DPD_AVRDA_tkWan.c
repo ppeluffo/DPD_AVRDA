@@ -373,6 +373,7 @@ int16_t fptr;
     // Medidas de CLORO:
     fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&S0=%d&S100=%d"), dr->S0, dr->S100);
     fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&ABS=%0.3f&CLPPM=%0.3f"), dr->absorbancia, dr->cloro_ppm);
+    fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&TS=%s"), dr->timestamp);
 
     // Proceso. Envio hasta 2 veces el frame y espero hasta 10s la respuesta
     tryes = DATA_TRYES;
@@ -454,6 +455,9 @@ char *p;
     
     if ( strstr( p, "MEDIR") != NULL ) {
         xprintf_P(PSTR("WAN:: MEDIR order from Server !!\r\n"));
+        xprintf_P(PSTR("MEDIR CLORO x WAN\r\n"));
+        action_medida_completa(true);
+        
         vTaskDelay( ( TickType_t)( 2000 / portTICK_PERIOD_MS ) );
         
     }

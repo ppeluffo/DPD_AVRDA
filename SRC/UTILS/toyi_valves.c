@@ -91,7 +91,13 @@ void valve_print_status(void)
     
 }
 // -----------------------------------------------------------------------------
-void fn_valve_0_open(void)
+void valve_0_open(bool debug)
+{
+    valveCB_0.debug = debug;
+    cbk_valve_0_open();
+}
+// -----------------------------------------------------------------------------
+void cbk_valve_0_open(void)
 {
     if (valveCB_0.debug)
         xprintf_P(PSTR("Valve 0 open\r\n"));
@@ -100,7 +106,13 @@ void fn_valve_0_open(void)
     vstatus.vs0 = VALVE_OPEN; 
 }
 //------------------------------------------------------------------------------
-void fn_valve_0_close(void)
+void valve_0_close(bool debug)
+{
+    valveCB_0.debug = debug;
+    cbk_valve_0_close();
+}
+// -----------------------------------------------------------------------------
+void cbk_valve_0_close(void)
 {
     if (valveCB_0.debug)
         xprintf_P(PSTR("Valve 0 close\r\n"));
@@ -109,7 +121,13 @@ void fn_valve_0_close(void)
     vstatus.vs0 = VALVE_CLOSE; 
 }
 //------------------------------------------------------------------------------
-void fn_valve_1_open(void)
+void valve_1_open(bool debug)
+{
+    valveCB_1.debug = debug;
+    cbk_valve_1_open();
+}
+// -----------------------------------------------------------------------------
+void cbk_valve_1_open(void)
 {
     if (valveCB_1.debug)
         xprintf_P(PSTR("Valve 1 open\r\n"));
@@ -118,7 +136,13 @@ void fn_valve_1_open(void)
     vstatus.vs1 = VALVE_OPEN; 
 }
 //------------------------------------------------------------------------------
-void fn_valve_1_close(void)
+void valve_1_close(bool debug)
+{
+    valveCB_1.debug = debug;
+    cbk_valve_1_close();
+}
+// -----------------------------------------------------------------------------
+void cbk_valve_1_close(void)
 {
     if (valveCB_1.debug)
         xprintf_P(PSTR("Valve 1 close\r\n"));
@@ -127,16 +151,29 @@ void fn_valve_1_close(void)
     vstatus.vs1 = VALVE_CLOSE; 
 }
 //------------------------------------------------------------------------------
-void fn_valve_2_open(void)
+void valve_2_open(bool debug)
+{
+    valveCB_2.debug = debug;
+    cbk_valve_2_open();
+}
+// -----------------------------------------------------------------------------
+void cbk_valve_2_open(void)
 {
     if (valveCB_2.debug)
         xprintf_P(PSTR("Valve 2 open\r\n"));
      
     OPEN_VALVE2();
-    vstatus.vs2 = VALVE_OPEN; 
+    vstatus.vs2 = VALVE_OPEN;
+    
 }
 //------------------------------------------------------------------------------
-void fn_valve_2_close(void)
+void valve_2_close(bool debug)
+{
+    valveCB_2.debug = debug;
+    cbk_valve_2_close();
+}
+// -----------------------------------------------------------------------------
+void cbk_valve_2_close(void)
 {
     if (valveCB_2.debug)
         xprintf_P(PSTR("Valve 2 close\r\n"));

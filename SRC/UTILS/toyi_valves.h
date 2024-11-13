@@ -69,12 +69,19 @@ bool valve_open(uint8_t valve_id);
 bool valve_close(uint8_t valve_id);
 void valve_print_status(void);
 
-void fn_valve_0_open(void);
-void fn_valve_0_close(void);
-void fn_valve_1_open(void);
-void fn_valve_1_close(void);
-void fn_valve_2_open(void);
-void fn_valve_2_close(void);
+void valve_0_open(bool debug);
+void valve_0_close(bool debug);
+void valve_1_open(bool debug);
+void valve_1_close(bool debug);
+void valve_2_open(bool debug);
+void valve_2_close(bool debug);
+
+void cbk_valve_0_open(void);
+void cbk_valve_0_close(void);
+void cbk_valve_1_open(void);
+void cbk_valve_1_close(void);
+void cbk_valve_2_open(void);
+void cbk_valve_2_close(void);
 
 #ifdef	__cplusplus
 }

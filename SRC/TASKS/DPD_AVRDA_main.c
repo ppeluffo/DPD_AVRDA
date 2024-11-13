@@ -167,8 +167,9 @@ int main(void) {
     xHandle_tkSys = xTaskCreateStatic( tkSys, "SYS", tkSys_STACK_SIZE, (void *)1, tkSys_TASK_PRIORITY, tkSys_Buffer, &tkSys_Buffer_Ptr );
     xHandle_tkCmd = xTaskCreateStatic( tkCmd, "CMD", tkCmd_STACK_SIZE, (void *)1, tkCmd_TASK_PRIORITY, tkCmd_Buffer, &tkCmd_Buffer_Ptr );
     xHandle_tkModemRX = xTaskCreateStatic( tkModemRX, "MODEMRX", tkModemRX_STACK_SIZE, (void *)1, tkModemRX_TASK_PRIORITY, tkModemRX_Buffer, &tkModemRX_Buffer_Ptr );
- //   xHandle_tkWan = xTaskCreateStatic( tkWan, "WAN", tkWan_STACK_SIZE, (void *)1, tkWan_TASK_PRIORITY, tkWan_Buffer, &tkWan_Buffer_Ptr );
-    xHandle_tkLcdRX = xTaskCreateStatic( tkLcdRX, "LCD", tkLcdRX_STACK_SIZE, (void *)1, tkLcdRX_TASK_PRIORITY, tkLcdRX_Buffer, &tkLcdRX_Buffer_Ptr );
+    xHandle_tkWan = xTaskCreateStatic( tkWan, "WAN", tkWan_STACK_SIZE, (void *)1, tkWan_TASK_PRIORITY, tkWan_Buffer, &tkWan_Buffer_Ptr );
+    xHandle_tkLcdRX = xTaskCreateStatic( tkLcdRX, "LCDRX", tkLcdRX_STACK_SIZE, (void *)1, tkLcdRX_TASK_PRIORITY, tkLcdRX_Buffer, &tkLcdRX_Buffer_Ptr );
+    xHandle_tkLcd = xTaskCreateStatic( tkLcd, "LCD", tkLcd_STACK_SIZE, (void *)1, tkLcd_TASK_PRIORITY, tkLcd_Buffer, &tkLcd_Buffer_Ptr );
 
     /* Arranco el RTOS. */
 	vTaskStartScheduler();

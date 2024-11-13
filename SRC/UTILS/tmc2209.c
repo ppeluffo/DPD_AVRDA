@@ -4,7 +4,6 @@
 #include "avr/interrupt.h"
 #include "DPD_AVRDA.h"
 
-
 //---------------------------------------------------------------
 void pump0_init(void)
 {
@@ -24,33 +23,6 @@ void pump0_init(void)
     pumpCB_0.enabled = true;
     pumpCB_0.running = false;
                 
-}
-// ---------------------------------------------------------------
-void pump0_run(uint16_t secs)
-{
-    xprintf_P(PSTR("PUMP0 run %d\r\n"), secs);
-    PUMP0_ENABLE();
-    PUMP0_FORWARD();
-    
-    TCB1.INTFLAGS = TCB_CAPT_bm;                         
-    TCB1.CTRLA = TCB_ENABLE_bm; 
-    
-    //pump0.ticks = secs * pump0.freq;
-    pumpCB_0.ticks = (uint32_t)secs * pumpCB_0.freq;
-    //xprintf_P(PSTR("PUMP0 ticks %lu\r\n"), pump0.ticks);
-    pumpCB_0.running = true;
-    pumpCB_0.enabled = true;
-}
-//----------------------------------------------------------------
-void pump0_stop(void)
-{
-    xprintf_P(PSTR("PUMP0 stop\r\n"));
-    TCB1.CTRLA = 0x00;
-    PUMP0_STEP_OFF();
-    PUMP0_DISABLE();
-    
-    pumpCB_0.running = false;
-    pumpCB_0.enabled = false;
 }
 // ---------------------------------------------------------------
 ISR( TCB1_INT_vect )
@@ -86,31 +58,6 @@ void pump1_init(void)
     pumpCB_1.running = false;               
 }
 // ---------------------------------------------------------------
-void pump1_run(uint16_t secs)
-{
-    xprintf_P(PSTR("PUMP1 run %d\r\n"), secs);
-    PUMP1_ENABLE();
-    PUMP1_FORWARD();
-    
-    TCB2.INTFLAGS = TCB_CAPT_bm;                         
-    TCB2.CTRLA = TCB_ENABLE_bm;  
-    //pumpCB_1.ticks = secs * pumpCB_1.freq;
-    pumpCB_1.ticks = (uint32_t)secs * pumpCB_1.freq;
-    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pumpCB_1.ticks);
-    pumpCB_1.running = true;
-    pumpCB_1.enabled = true;
-}
-//----------------------------------------------------------------
-void pump1_stop(void)
-{
-    xprintf_P(PSTR("PUMP1 stop\r\n"));
-    TCB2.CTRLA = 0x00;
-    PUMP1_STEP_OFF();
-    PUMP1_DISABLE();
-    pumpCB_1.running = false;
-    pumpCB_1.enabled = false;
-}
-// ---------------------------------------------------------------
 ISR( TCB2_INT_vect )
 {
     CLR_INT( TCB2_INTFLAGS, TCB_CAPT_bm );
@@ -142,31 +89,6 @@ void pump2_init(void)
      
     pumpCB_2.enabled = true;
     pumpCB_2.running = false;
-}
-// ---------------------------------------------------------------
-void pump2_run(uint16_t secs)
-{
-    xprintf_P(PSTR("PUMP2 run %d\r\n"), secs);
-    PUMP2_ENABLE();
-    PUMP2_FORWARD();
-    
-    TCB3.INTFLAGS = TCB_CAPT_bm;                         
-    TCB3.CTRLA = TCB_ENABLE_bm;  
-    //pumpCB_2.ticks = secs * pumpCB_2.freq;
-    pumpCB_2.ticks = (uint32_t)secs * pumpCB_2.freq;
-    //xprintf_P(PSTR("PUMP2 ticks %lu\r\n"), pumpCB_2.ticks);
-    pumpCB_2.running = true;
-    pumpCB_2.enabled = true;   
-}
-//----------------------------------------------------------------
-void pump2_stop(void)
-{
-    xprintf_P(PSTR("PUMP2 stop\r\n"));
-    TCB3.CTRLA = 0x00;
-    PUMP2_STEP_OFF();
-    PUMP2_DISABLE();
-    pumpCB_2.running = false;
-    pumpCB_2.enabled = false;
 }
 // ---------------------------------------------------------------
 ISR( TCB3_INT_vect )
@@ -236,19 +158,19 @@ bool pump_config( char *s_id, char *s_freq )
     switch(pump_id) {
         case 0:
             pumps_conf.pump0_freq = pump_freq;
-            pump0_stop();
+            pump_0_stop(false);
             TCB1.CCMP = configCPU_CLOCK_HZ / pump_freq;
             return(true);
             break;
         case 1:
             pumps_conf.pump1_freq = pump_freq;
-            pump1_stop();
+            pump_1_stop(false);
             TCB2.CCMP = configCPU_CLOCK_HZ / pump_freq;
             return(true);
             break;
         case 2:
             pumps_conf.pump2_freq = pump_freq;
-            pump2_stop();
+            pump_2_stop(false);
             TCB3.CCMP = configCPU_CLOCK_HZ / pump_freq;
             return(true);
             break;
@@ -267,45 +189,63 @@ void pump_config_default(void)
      *
      */
     pumps_conf.pump0_freq = 1200;    
-    pump0_stop();
+    pump_0_stop(false);
     TCB1.CCMP = configCPU_CLOCK_HZ / pumps_conf.pump0_freq;
 
     pumps_conf.pump1_freq = 1200;    
-    pump1_stop();
+    pump_1_stop(false);
     TCB2.CCMP = configCPU_CLOCK_HZ / pumps_conf.pump1_freq;
 
     pumps_conf.pump2_freq = 12800;    
-    pump2_stop();
+    pump_2_stop(false);
     TCB3.CCMP = configCPU_CLOCK_HZ / pumps_conf.pump2_freq;
     
 }
 //------------------------------------------------------------------------------
 // ACCIONES BASICAS
 //------------------------------------------------------------------------------
-void fn_pump_0_run(void)
+void pump_0_run(bool debug, uint16_t secs)
 {
     
-uint16_t secs;
-    
-    secs = pumpCB_0.secs;
+    pumpCB_0.secs = secs;
+    pumpCB_0.debug = debug;
 
+    cbk_pump_0_run(); 
+}
+// -----------------------------------------------------------------------------
+void cbk_pump_0_run(void)
+{
+    
     if (pumpCB_0.debug)
-        xprintf_P(PSTR("Pump 0 run %d secs\r\n"), secs);
+        xprintf_P(PSTR("Pump 0 run %d secs\r\n"), pumpCB_0.secs);
+    
+    pumpCB_0.freq = pumps_conf.pump0_freq;
+    //pumpCB_0.ticks = (uint32_t)(pumpCB_0.secs * pumpCB_0.freq);
+    pumpCB_0.ticks = pumpCB_0.secs;
+    pumpCB_0.ticks *= pumpCB_0.freq;
+
+    //xprintf_P(PSTR("PUMP0 secs %d\r\n"), pumpCB_0.secs);
+    //xprintf_P(PSTR("PUMP0 freq %d\r\n"), pumpCB_0.freq);
+    //xprintf_P(PSTR("PUMP0 ticks %lu\r\n"), pumpCB_0.ticks);
     
     PUMP0_ENABLE();
     PUMP0_FORWARD();
-    
+    TCB1.CCMP = configCPU_CLOCK_HZ / pumpCB_0.freq;
     TCB1.INTFLAGS = TCB_CAPT_bm;                         
-    TCB1.CTRLA = TCB_ENABLE_bm;  
-    //pump1.ticks = secs * pump1.freq;
-    pumpCB_0.ticks = (uint32_t)secs * pumpCB_0.freq;
-    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pump1.ticks);
+    TCB1.CTRLA = TCB_ENABLE_bm; 
+    
     pumpCB_0.running = true;
     pumpCB_0.enabled = true;
 
 }
 // -----------------------------------------------------------------------------
-void fn_pump_0_stop(void)
+void pump_0_stop(bool debug)
+{
+    pumpCB_0.debug = debug;
+    cbk_pump_0_stop();
+}
+// -----------------------------------------------------------------------------
+void cbk_pump_0_stop(void)
 {
     if (pumpCB_0.debug)
         xprintf_P(PSTR("Pump 0 stop\r\n"));
@@ -318,28 +258,47 @@ void fn_pump_0_stop(void)
     pumpCB_0.enabled = false;
 }
 // -----------------------------------------------------------------------------
-void fn_pump_1_run(void)
+void pump_1_run(bool debug, uint16_t secs)
 {
     
-uint16_t secs;
-    
-    secs = pumpCB_1.secs;
+    pumpCB_1.secs = secs;
+    pumpCB_1.debug = debug;
 
+    cbk_pump_1_run(); 
+}
+// -----------------------------------------------------------------------------
+void cbk_pump_1_run(void)
+{
     if (pumpCB_1.debug)
-        xprintf_P(PSTR("Pump 1 run %d secs\r\n"), secs);
+        xprintf_P(PSTR("Pump 1 run %d secs\r\n"), pumpCB_1.secs);
+    
+    pumpCB_1.freq = pumps_conf.pump1_freq;
+    //pumpCB_1.ticks = (uint32_t)(pumpCB_1.secs * pumpCB_1.freq);
+    pumpCB_1.ticks = pumpCB_1.secs;
+    pumpCB_1.ticks *= pumpCB_1.freq;
+    
+    //xprintf_P(PSTR("PUMP1 secs %d\r\n"), pumpCB_1.secs);
+    //xprintf_P(PSTR("PUMP1 freq %d\r\n"), pumpCB_1.freq);
+    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pumpCB_1.ticks);
     
     PUMP1_ENABLE();
     PUMP1_FORWARD();
-    
+    TCB2.CCMP = configCPU_CLOCK_HZ / pumpCB_1.freq;
     TCB2.INTFLAGS = TCB_CAPT_bm;                         
-    TCB2.CTRLA = TCB_ENABLE_bm;  
-    pumpCB_1.ticks = (uint32_t)secs * pumpCB_1.freq;
+    TCB2.CTRLA = TCB_ENABLE_bm; 
+    
     pumpCB_1.running = true;
     pumpCB_1.enabled = true;
-
+    
 }
 // -----------------------------------------------------------------------------
-void fn_pump_1_stop(void)
+void pump_1_stop(bool debug)
+{
+    pumpCB_1.debug = debug;
+    cbk_pump_1_stop();
+}
+// -----------------------------------------------------------------------------
+void cbk_pump_1_stop(void)
 {
     if (pumpCB_1.debug)
         xprintf_P(PSTR("Pump 1 stop\r\n"));
@@ -352,33 +311,57 @@ void fn_pump_1_stop(void)
     pumpCB_1.enabled = false;
 }
 // -----------------------------------------------------------------------------
-void fn_pump_2_run(void)
+void pump_2_run(bool debug, uint16_t secs)
+{
+
+    pumpCB_2.secs = secs;
+    pumpCB_2.debug = debug;
+
+    cbk_pump_2_run();
+    
+}
+// -----------------------------------------------------------------------------
+void cbk_pump_2_run(void)
 {
     
-uint16_t secs;
+ //   uint32_t gvar;
     
-    secs = pumpCB_2.secs;
-
     if (pumpCB_2.debug)
-        xprintf_P(PSTR("Pump 2 run %d secs\r\n"), secs);
+        xprintf_P(PSTR("Pump 2 run %d secs\r\n"), pumpCB_2.secs);
+        
+    pumpCB_2.freq = pumps_conf.pump2_freq;
+    
+    pumpCB_2.ticks = pumpCB_2.secs;
+    pumpCB_2.ticks *= pumpCB_2.freq;   
+   // pumpCB_2.ticks = (uint32_t)(pumpCB_2.secs * pumpCB_2.freq);
+    
+    //xprintf_P(PSTR("PUMP2 secs %d\r\n"), pumpCB_2.secs);
+    //xprintf_P(PSTR("PUMP2 freq %d\r\n"), pumpCB_2.freq);
+    //xprintf_P(PSTR("PUMP2 ticks %lu\r\n"), pumpCB_2.ticks);
     
     PUMP2_ENABLE();
     PUMP2_FORWARD();
-    
+    TCB3.CCMP = configCPU_CLOCK_HZ / pumpCB_2.freq;
     TCB3.INTFLAGS = TCB_CAPT_bm;                         
-    TCB3.CTRLA = TCB_ENABLE_bm;  
-    pumpCB_2.ticks = (uint32_t)secs * pumpCB_2.freq;
+    TCB3.CTRLA = TCB_ENABLE_bm; 
+    
     pumpCB_2.running = true;
     pumpCB_2.enabled = true;
-
+    
 }
 // -----------------------------------------------------------------------------
-void fn_pump_2_stop(void)
+void pump_2_stop(bool debug)
+{
+    pumpCB_2.debug = debug;
+    cbk_pump_2_stop();
+}
+// -----------------------------------------------------------------------------
+void cbk_pump_2_stop(void)
 {
     if (pumpCB_2.debug)
         xprintf_P(PSTR("Pump 2 stop\r\n"));
     
-    TCB3.CTRLA = 0x00;
+    TCB2.CTRLA = 0x00;
     PUMP2_STEP_OFF();
     PUMP2_DISABLE();
     
@@ -386,3 +369,91 @@ void fn_pump_2_stop(void)
     pumpCB_2.enabled = false;
 }
 // -----------------------------------------------------------------------------
+/*
+void pump0_run(uint16_t secs)
+{
+    xprintf_P(PSTR("PUMP0 run %d\r\n"), secs);
+    PUMP0_ENABLE();
+    PUMP0_FORWARD();
+    
+    TCB1.INTFLAGS = TCB_CAPT_bm;                         
+    TCB1.CTRLA = TCB_ENABLE_bm; 
+    
+    //pump0.ticks = secs * pump0.freq;
+    pumpCB_0.ticks = (uint32_t)secs * pumpCB_0.freq;
+    //xprintf_P(PSTR("PUMP0 ticks %lu\r\n"), pump0.ticks);
+    pumpCB_0.running = true;
+    pumpCB_0.enabled = true;
+}
+ */
+//----------------------------------------------------------------
+/*
+void pump0_stop(void)
+{
+    xprintf_P(PSTR("PUMP0 stop\r\n"));
+    TCB1.CTRLA = 0x00;
+    PUMP0_STEP_OFF();
+    PUMP0_DISABLE();
+    
+    pumpCB_0.running = false;
+    pumpCB_0.enabled = false;
+}
+ */
+/*
+void pump1_run(uint16_t secs)
+{
+    xprintf_P(PSTR("PUMP1 run %d\r\n"), secs);
+    PUMP1_ENABLE();
+    PUMP1_FORWARD();
+    
+    TCB2.INTFLAGS = TCB_CAPT_bm;                         
+    TCB2.CTRLA = TCB_ENABLE_bm;  
+    //pumpCB_1.ticks = secs * pumpCB_1.freq;
+    pumpCB_1.ticks = (uint32_t)secs * pumpCB_1.freq;
+    //xprintf_P(PSTR("PUMP1 ticks %lu\r\n"), pumpCB_1.ticks);
+    pumpCB_1.running = true;
+    pumpCB_1.enabled = true;
+}
+ */
+//----------------------------------------------------------------
+/*
+void pump1_stop(void)
+{
+    xprintf_P(PSTR("PUMP1 stop\r\n"));
+    TCB2.CTRLA = 0x00;
+    PUMP1_STEP_OFF();
+    PUMP1_DISABLE();
+    pumpCB_1.running = false;
+    pumpCB_1.enabled = false;
+}
+ */
+// ---------------------------------------------------------------
+/*
+void pump2_run(uint16_t secs)
+{
+    xprintf_P(PSTR("PUMP2 run %d\r\n"), secs);
+    PUMP2_ENABLE();
+    PUMP2_FORWARD();
+    
+    TCB3.INTFLAGS = TCB_CAPT_bm;                         
+    TCB3.CTRLA = TCB_ENABLE_bm;  
+    //pumpCB_2.ticks = secs * pumpCB_2.freq;
+    pumpCB_2.ticks = (uint32_t)secs * pumpCB_2.freq;
+    //xprintf_P(PSTR("PUMP2 ticks %lu\r\n"), pumpCB_2.ticks);
+    pumpCB_2.running = true;
+    pumpCB_2.enabled = true;   
+}
+ */
+//----------------------------------------------------------------
+/*
+void pump2_stop(void)
+{
+    xprintf_P(PSTR("PUMP2 stop\r\n"));
+    TCB3.CTRLA = 0x00;
+    PUMP2_STEP_OFF();
+    PUMP2_DISABLE();
+    pumpCB_2.running = false;
+    pumpCB_2.enabled = false;
+}
+ */
+// ---------------------------------------------------------------

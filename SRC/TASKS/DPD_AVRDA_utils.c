@@ -199,6 +199,12 @@ uint8_t P1 = -1;
 float x0,x1,y0,y1;
 float cloro;
 
+    xprintf_P(PSTR("AbS2CL: %0.4f\r\n"), abs);
+
+    if (abs < 0 ) {
+        cloro = -1;
+        goto quit;
+    }
     // Busco el mejor tramo
     for (i=1; i<CAL_MAX_POINTS; i++) {
         
@@ -233,6 +239,9 @@ float cloro;
     }
     
     cloro = ( (y1-y0)/(x1-x0))*(abs - x0) + y0;
+    
+quit:
+    
     xprintf_P(PSTR("Absorbancia = %0.3f\r\n"), abs);
     xprintf_P(PSTR("Cloro(ppm) = %0.3f\r\n"), cloro);
     

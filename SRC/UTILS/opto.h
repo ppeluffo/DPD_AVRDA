@@ -39,9 +39,11 @@ typedef struct {
 
 optoCB_t optoCB;
 
+void opto_on( bool debug);
+void opto_off( bool debug);
 bool opto_get_status(void);
-void fn_opto_on(void);
-void fn_opto_off(void);
+void cbk_opto_on(void);
+void cbk_opto_off(void);
 
 
 

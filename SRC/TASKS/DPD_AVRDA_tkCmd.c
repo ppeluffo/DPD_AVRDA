@@ -115,7 +115,7 @@ static void cmdHelpFunction(void)
         
     } else if (!strcmp_P( strupr(argv[1]), PSTR("TEST"))) {
 		xprintf_P( PSTR("-test\r\n"));
-        xprintf_P( PSTR("  display {ping|clear|clrbuff|read|send row col data}\r\n"));
+        xprintf_P( PSTR("  display {ping|clear|clrbuff|read|brillo N|send row col data}\r\n"));
         xprintf_P( PSTR("  modem {prender|apagar|atmode|exitat|queryall|ids|save}\r\n"));
         xprintf_P( PSTR("  modem set [apn {apn}, apiurl {apiurl}, server {ip,port}], ftime {time_ms}]\r\n"));
         xprintf_P( PSTR("  modem write, read\r\n"));
@@ -321,6 +321,11 @@ uint8_t i;
     xprintf_P(PSTR(" dlgid: %s\r\n"), systemConf.dlgid );
     xprintf_P(PSTR(" timerpoll=%d\r\n"), systemConf.timerpoll);
     xprintf_P(PSTR(" timermedida=%lu/(%lu)\r\n"), systemConf.timermedida, systemVars.time2medida);
+    if ( systemVars.midiendo) {
+        xprintf_P(PSTR(" status=MIDIENDO\r\n"));
+    } else {
+        xprintf_P(PSTR(" status=STANDBY\r\n"));
+    }
     
     xprintf_P(PSTR("Calibracion (i,x,y):\r\n"));
     for(i=0; i<CAL_MAX_POINTS; i++) {
@@ -332,6 +337,7 @@ uint8_t i;
     xprintf_P(PSTR(" S100=%d\r\n"),systemVars.S100);
     xprintf_P(PSTR(" absorbancia=%0.3f\r\n"), systemVars.absorbancia);
     xprintf_P(PSTR(" cloro_ppm=%0.3f\r\n"), systemVars.cloro_ppm);
+    xprintf_P(PSTR(" timestamp=%s\r\n"), &systemVars.timestamp[0]);
 
     xprintf_P(PSTR("Valves:\r\n"));
     valve_print_status();
@@ -511,13 +517,11 @@ bool cmd_test_opto(char *s_action)
     
     if ( !strcmp_P( strupr(s_action), PSTR("ON"))) {
         action_opto_on(true);
-        action_await();
         return(true);
     }
     
     if ( !strcmp_P( strupr(s_action), PSTR("OFF"))) {
         action_opto_off(true);
-        action_await();
         return(true);
     }
     
@@ -578,7 +582,6 @@ bool ret = false;
     
 quit:
             
-    action_await();
     return(ret);
 }
 //------------------------------------------------------------------------------
@@ -641,7 +644,6 @@ bool ret = false;
 
 quit:
             
-    action_await();     
     return(ret);
      
 }
@@ -651,7 +653,6 @@ bool cmd_test_adc( char *s_counts )
     action_adc_read(true, atoi(s_counts));
     
     vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
-    action_await();
     xprintf_P(PSTR("ADCres=%d\r\n"), adcCB.result);
     return(true);
     
@@ -674,46 +675,46 @@ bool cmd_test_procedimientos( char *s_pid )
 {
     switch(atoi(s_pid)) {
         case 0:
-            proc_inicio_sistema(true);
+            action_inicio_sistema(true);
             break;
         case 1:
-            proc_lavado_reservorio_de_muestra(true);
+            action_lavado_reservorio_de_muestra(true);
             break;
         case 2:
-            proc_llenado_reservorio_con_muestra_a_medir(true);
+            action_llenado_reservorio_con_muestra_a_medir(true);
             break;
         case 3:
-            proc_purga_canal_muestra(true);
+            action_purga_canal_muestra(true);
             break;
         case 4:
-            proc_lavado_celda(true);
+            action_lavado_celda(true);
             break;
         case 5:
-            proc_ajustes_fotometricos(true);
+            action_ajustes_fotometricos(true);
             break;
         case 6:
-            proc_medicion(true);
+            action_medicion(true);
             break;
         case 7:
-            proc_lavado_final(true);
+            action_lavado_final(true);
             break;
         case 8:
-            proc_fin_sistema(true);
+            action_fin_sistema(true);
             break;
         case 9:
-            proc_llenar_celda_medida(true);
+            action_llenar_celda_medida(true);
             break;
         case 10:
-            proc_vaciar_celda_medida(true);
+            action_vaciar_celda_medida(true);
             break;
         case 11:
-            proc_calibrar(true);
+            action_calibrar(true);
             break;
         case 12:
-            proc_medida_completa(true);
+            action_medida_completa(true);
             break;
         case 13:
-            proc_llenado_con_reactivos(true);
+            action_llenado_con_reactivos(true);
             break;
         default:
             return(false);           
@@ -885,13 +886,19 @@ uint8_t row,col;
 char *p;
 
 
+    if (!strcmp_P( strupr(argv[2]), PSTR("BRILLO"))  ) {
+        lcd_cmd_brightness(atoi(argv[3]));
+        retS=true;
+        goto exit;
+    }
+
     if (!strcmp_P( strupr(argv[2]), PSTR("CLRBUF"))  ) {
         lcd_cmd_clearbuff();
         retS=true;
         goto exit;
     } 
     
-if (!strcmp_P( strupr(argv[2]), PSTR("READ"))  ) {
+    if (!strcmp_P( strupr(argv[2]), PSTR("READ"))  ) {
         lcd_cmd_read();
         retS=true;
         goto exit;
