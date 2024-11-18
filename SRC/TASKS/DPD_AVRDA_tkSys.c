@@ -28,9 +28,9 @@ void tkSys(void * pvParameters)
     
     vTaskDelay( ( TickType_t)( 250 / portTICK_PERIOD_MS ) );
     
-    //SYSTEM_ENTER_CRITICAL();
-    //task_running |= SYS_WDG_gc;
-    //SYSTEM_EXIT_CRITICAL();
+    SYSTEM_ENTER_CRITICAL();
+    task_running |= SYS_WDG_gc;
+    SYSTEM_EXIT_CRITICAL();
     
     xprintf_P(PSTR("Starting tkSys..\r\n"));
         
@@ -41,15 +41,16 @@ void tkSys(void * pvParameters)
     
 	for( ;; )
 	{         
-        //u_kick_wdt(SYS_WDG_gc);
+        u_kick_wdt(SYS_WDG_gc);
         
         if ( actionCB.standby ) {
             // No hago nada. Espero
-            vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+            vTaskDelay( ( TickType_t)( 100 / portTICK_PERIOD_MS ) );
             
         } else {
             
             // Ejecuto la funcion y reseteo el puntero
+            xprintf_P(PSTR("Exec\r\n"));
             actionCB.fn();
             actionCB.fn = NULL;
             actionCB.standby = true;

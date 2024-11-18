@@ -211,7 +211,7 @@ void RTC_rtc2str(char *str, RtcTimeType_t *rtc, bool format_long )
     }
 }
 //------------------------------------------------------------------------------------
-void RTC_rtc2strplain(char *str )
+void RTC_rtc2strplain(char *s_date, char *s_time )
 {
     // Convierte los datos del RTC a un string con formato YYYYMMDDhhmm
     
@@ -223,7 +223,8 @@ int16_t rdBytes = 0;
 	if ( rdBytes == -1 ) {
 		xprintf_P(PSTR("ERROR: I2C:RTC_rtc2strplain\r\n"));
 	} else { 
-        snprintf( str, 16 ,"%02d%02d%02d_%02d%02d%02d", rtc.year, rtc.day, rtc.month, rtc.hour,rtc.min, rtc.sec );
+        snprintf( s_date, 8 ,"%02d%02d%02d", rtc.year, rtc.day, rtc.month );
+        snprintf( s_time, 8 ,"%02d%02d%02d", rtc.hour,rtc.min, rtc.sec );
     }
 }
 //------------------------------------------------------------------------------------

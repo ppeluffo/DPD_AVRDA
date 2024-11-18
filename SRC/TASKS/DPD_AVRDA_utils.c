@@ -97,7 +97,9 @@ void u_config_default(void)
     systemConf.timermedida = 10800;
     systemConf.adc_cal_factor = 3400;
     systemConf.adc_cal_volts = 3.0;
-    
+    systemConf.S0 = 0;
+    systemConf.S100 = 2750;
+            
     // Configuro a default todas las configuraciones locales
     pump_config_default();
     
@@ -186,7 +188,7 @@ void SYSTEM_EXIT_CRITICAL(void)
     xSemaphoreGive( sem_SYSVars );
 }
 //------------------------------------------------------------------------------
-float cloro_from_absorbancia(float abs, bool debug)
+float __cloro_from_absorbancia(float abs, bool debug)
 {
     /*
      * Busca en la curva de calibracion el tramo que se ajusta a la absorbancia
@@ -249,6 +251,51 @@ quit:
     
 }
 //------------------------------------------------------------------------------
+float cloro_from_absorbancia(float abs, bool debug)
+{
+    /*
+     *  
+     * 2024-11-18: 
+     * Solo considero 2 puntos y hago extrapolación
+     * 
+     * Busca en la curva de calibracion el tramo que se ajusta a la absorbancia
+     * dada y calcula el cloro equivalente
+     */
+    
+uint8_t i;
+uint8_t P0 = -1;
+uint8_t P1 = -1;
+float x0,x1,y0,y1;
+float cloro;
+
+    xprintf_P(PSTR("AbS2CL: %0.4f\r\n"), abs);
+
+    if (abs < 0 ) {
+        cloro = -1;
+        goto quit;
+    }
+
+    x0 = systemConf.xCal[0];
+    y0 = systemConf.yCal[0];
+    x1 = systemConf.xCal[1];
+    y1 = systemConf.yCal[1];
+    
+    if (debug) {
+        xprintf_P(PSTR("(X0=%0.3f,Y0=%0.3f}\r\n"), x0,y0);
+        xprintf_P(PSTR("(X1=%0.3f,Y1=%0.3f}\r\n"), x1,y1);
+    }
+    
+    cloro = ( (y1-y0)/(x1-x0))*(abs - x0) + y0;
+    
+quit:
+    
+    xprintf_P(PSTR("Absorbancia = %0.3f\r\n"), abs);
+    xprintf_P(PSTR("Cloro(ppm) = %0.2f\r\n"), cloro);
+    
+    return(cloro);
+    
+}
+//------------------------------------------------------------------------------
 void u_data_resync_clock( char *str_time, bool force_adjust)
 {
 	/*
@@ -305,5 +352,57 @@ int8_t xBytes = 0;
 		}
 		return;
 	}
+}
+//------------------------------------------------------------------------------
+bool u_config_debug( char *tipo, char *valor)
+{
+    /*
+     * Configura las flags de debug para ayudar a visualizar los problemas
+     * ainput,counter,modbus,piloto,wan, consigna
+     */
+    
+     
+    if (!strcmp_P( strupr(tipo), PSTR("WAN")) ) {
+        if (!strcmp_P( strupr(valor), PSTR("TRUE")) ) {
+            WAN_config_debug(true);
+            return(true);
+        }
+        if (!strcmp_P( strupr(valor), PSTR("FALSE")) ) {
+            WAN_config_debug(false);
+            return(true);
+        }
+    }
+
+    return(false);
+    
+}
+//------------------------------------------------------------------------------
+int16_t u_days2calibrate(void)
+{
+    /*
+     * Calcula en base a la fecha de la ultima calibracion cuantos dias
+     * faltan para recalibrar.
+     * Asumimos que la calibracion dura 45 días.
+     * 
+     */
+ 
+uint16_t now, cal;
+RtcTimeType_t rtc, rtc_cal;
+char rtcstr[12];
+
+    // Leo el dia actual y lo convierto a dias desde el 24-01-01
+    RTC_read_dtime( &rtc);
+	now = rtc.day +  30 * (rtc.month - 1) + 365 * (rtc.year - 24 );
+    
+    // Leo la fecha de la ultima calibración
+    memset(rtcstr, 0, sizeof(rtcstr));
+    memcpy(&rtcstr[0], systemConf.calibration_date, sizeof(systemConf.calibration_date));
+    RTC_str2rtc(&rtcstr[0], &rtc_cal);
+    cal = rtc_cal.day +  30 * (rtc_cal.month - 1) + 365 * (rtc_cal.year - 24 );
+    
+    // delta days
+    return ( 45 - ( now - cal));
+    
+
 }
 //------------------------------------------------------------------------------

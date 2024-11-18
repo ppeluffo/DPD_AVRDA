@@ -102,6 +102,8 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  pump {0,1,2} {freq}\r\n"));
         xprintf_P( PSTR("  XCAL {0,9}, YCAL {0..9} \r\n"));
         xprintf_P( PSTR("  CAL {i,abs,cl} \r\n"));
+        xprintf_P( PSTR("  calidate {yymmdd}\r\n"));
+        xprintf_P( PSTR("  S0, S100 \r\n"));
         xprintf_P( PSTR("  dlgid\r\n"));
         xprintf_P( PSTR("  timerpolll\r\n"));
         xprintf_P( PSTR("  debug {wan} {true/false}\r\n"));
@@ -140,6 +142,7 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("       11: Calibrar\r\n"));
         xprintf_P( PSTR("       12: medida_completa\r\n"));
         xprintf_P( PSTR("       13: llenado con reactivos\r\n"));
+        xprintf_P( PSTR("       14: Lavado para calibrar\r\n"));
         return;
         
     }  else {
@@ -327,17 +330,30 @@ uint8_t i;
         xprintf_P(PSTR(" status=STANDBY\r\n"));
     }
     
-    xprintf_P(PSTR("Calibracion (i,x,y):\r\n"));
-    for(i=0; i<CAL_MAX_POINTS; i++) {
-        xprintf_P(PSTR(" %d:[%0.3f,%0.3f]\r\n"), i, systemConf.xCal[i], systemConf.yCal[i]);
+    if ( WAN_is_online()) {
+        xprintf_P(PSTR(" wan=ONLINE\r\n"));
+    } else {
+        xprintf_P(PSTR(" wan=offLINE\r\n"));
     }
+    xprintf_P(PSTR(" tkRunning=0x%02X\r\n"), task_running);
+    xprintf_P(PSTR(" watchdows=0x%02X\r\n"), sys_watchdog);
+    
+    xprintf_P(PSTR("Calibracion (i,x,y):\r\n"));
+    xprintf_P(PSTR(" 0:[%0.3f,%0.3f]\r\n"), systemConf.xCal[0], systemConf.yCal[0]);
+    xprintf_P(PSTR(" 1:[%0.3f,%0.3f]\r\n"), systemConf.xCal[1], systemConf.yCal[1]);
+    for(i=2; i<CAL_MAX_POINTS; i++) {
+        if ( systemConf.yCal[i] > 0 ) {
+            xprintf_P(PSTR(" %d:[%0.3f,%0.3f]\r\n"), i, systemConf.xCal[i], systemConf.yCal[i]);
+        }
+    }
+    xprintf_P(PSTR(" cali_date=%s\r\n"), &systemConf.calibration_date[0]);
     //xprintf_P(PSTR("\r\n"));
     xprintf_P(PSTR("Medidas:\r\n"));
-    xprintf_P(PSTR(" S0=%d\r\n"),systemVars.S0);
-    xprintf_P(PSTR(" S100=%d\r\n"),systemVars.S100);
+    xprintf_P(PSTR(" S0=%d\r\n"),systemConf.S0);
+    xprintf_P(PSTR(" S100=%d\r\n"),systemConf.S100);
     xprintf_P(PSTR(" absorbancia=%0.3f\r\n"), systemVars.absorbancia);
-    xprintf_P(PSTR(" cloro_ppm=%0.3f\r\n"), systemVars.cloro_ppm);
-    xprintf_P(PSTR(" timestamp=%s\r\n"), &systemVars.timestamp[0]);
+    xprintf_P(PSTR(" cloro_ppm=%0.2f\r\n"), systemVars.cloro_ppm);
+    xprintf_P(PSTR(" timestamp=%s:%s\r\n"), &systemVars.ts_date[0], &systemVars.ts_time[0]);
 
     xprintf_P(PSTR("Valves:\r\n"));
     valve_print_status();
@@ -394,11 +410,20 @@ static void cmdConfigFunction(void)
     
     FRTOS_CMD_makeArgv();
 
-        // DLGID
+    // DLGID
 	if (!strcmp_P( strupr(argv[1]), PSTR("DLGID"))) {
         memset(systemConf.dlgid,'\0', sizeof(systemConf.dlgid) );
         memcpy(systemConf.dlgid, argv[2], sizeof(systemConf.dlgid));
         systemConf.dlgid[DLGID_LENGTH - 1] = '\0';
+        pv_snprintfP_OK();
+		return;
+    }
+    
+    // CALIDATE yymmdd
+    if (!strcmp_P( strupr(argv[1]), PSTR("CALIDATE"))) {
+        memset(systemConf.calibration_date,'\0', sizeof(systemConf.calibration_date) );
+        memcpy(systemConf.calibration_date, argv[2], sizeof(systemConf.calibration_date));
+        systemConf.calibration_date[TIMESTAMP_SIZE - 1] = '\0';
         pv_snprintfP_OK();
 		return;
     }
@@ -435,6 +460,21 @@ static void cmdConfigFunction(void)
 		return;
 	}
 
+    if (!strcmp_P( strupr(argv[1]), PSTR("S0")) ) {
+
+        systemConf.S0 = atof(argv[2]);
+        pv_snprintfP_OK();
+		return;
+        
+    }
+    
+    if (!strcmp_P( strupr(argv[1]), PSTR("S100")) ) {
+
+        systemConf.S100 = atof(argv[2]);
+        pv_snprintfP_OK();
+		return;
+        
+    }
     // CAL {i,abs,cl}
     if (!strcmp_P( strupr(argv[1]), PSTR("CAL"))) {  
         if ( atoi(argv[2]) < CAL_MAX_POINTS ) {
@@ -485,6 +525,11 @@ static void cmdConfigFunction(void)
 		return;
 	}
     
+    if (!strcmp_P( strupr(argv[1]), PSTR("DEBUG")) ) {
+        u_config_debug( argv[2], argv[3]) ? pv_snprintfP_OK() : pv_snprintfP_ERR();
+		return;
+    }
+    
     // DEFAULT
 	// config default
 	if (!strcmp_P( strupr(argv[1]), PSTR("DEFAULT"))) {
@@ -516,12 +561,14 @@ bool cmd_test_opto(char *s_action)
      */
     
     if ( !strcmp_P( strupr(s_action), PSTR("ON"))) {
-        action_opto_on(true);
+        //action_opto_on(true);
+        opto_on(true);
         return(true);
     }
     
     if ( !strcmp_P( strupr(s_action), PSTR("OFF"))) {
-        action_opto_off(true);
+        //action_opto_off(true);
+        opto_off(true);
         return(true);
     }
     
@@ -537,17 +584,17 @@ bool ret = false;
     if (!strcmp_P( strupr(s_action), PSTR("OPEN")) ) {
         switch(vid) {
         case 0:
-            action_valve_0_open(true);
+            valve_0_open(true);
             ret = true;
             goto quit;
             break;
         case 1:
-            action_valve_1_open(true);
+            valve_1_open(true);
             ret = true;
             goto quit;
             break;
         case 2:
-            action_valve_2_open(true);
+            valve_2_open(true);
             ret = true;
             goto quit;
             break; 
@@ -559,17 +606,17 @@ bool ret = false;
     if (!strcmp_P( strupr(s_action), PSTR("CLOSE")) ) {
         switch(vid) {
         case 0:
-            action_valve_0_close(true);
+            valve_0_close(true);
             ret = true;
             goto quit;            
             break;
         case 1:
-            action_valve_1_close(true);
+            valve_1_close(true);
             ret = true;
             goto quit; 
             break;
         case 2:
-            action_valve_2_close(true);
+            valve_2_close(true);
             ret = true;
             goto quit; 
             break; 
@@ -595,13 +642,13 @@ bool ret = false;
     switch(atoi(pump_id)) {
         case 0:
             if (!strcmp_P( strupr(s_action), PSTR("RUN")) ) {
-                action_pump_0_run(true, atoi(s_secs) );
+                pump_0_run(true, atoi(s_secs) );
                 ret = true;
                 goto quit;
             }
 
             if (!strcmp_P( strupr(s_action), PSTR("STOP")) ) {
-                action_pump_0_stop(true);
+                pump_0_stop(true);
                 ret = true;
                 goto quit;
             }     
@@ -611,13 +658,13 @@ bool ret = false;
             
         case 1:
             if (!strcmp_P( strupr(s_action), PSTR("RUN")) ) {
-                action_pump_1_run(true, atoi(s_secs) );
+                pump_1_run(true, atoi(s_secs) );
                 ret = true;
                 goto quit;
             }
 
             if (!strcmp_P( strupr(s_action), PSTR("STOP")) ) {
-                action_pump_1_stop(true);
+                pump_1_stop(true);
                 ret = true;
                 goto quit;
             }    
@@ -627,13 +674,13 @@ bool ret = false;
             
         case 2:
             if (!strcmp_P( strupr(s_action), PSTR("RUN")) ) {
-                action_pump_2_run(true, atoi(s_secs) );
+                pump_2_run(true, atoi(s_secs) );
                 ret = true;
                 goto quit;
             }
 
             if (!strcmp_P( strupr(s_action), PSTR("STOP")) ) {
-                action_pump_2_stop(true);
+                pump_2_stop(true);
                 ret = true;
                 goto quit;
             }    
@@ -650,7 +697,8 @@ quit:
 //------------------------------------------------------------------------------
 bool cmd_test_adc( char *s_counts )
 {
-    action_adc_read(true, atoi(s_counts));
+    //action_adc_read(true, atoi(s_counts));
+    adc_read(true, atoi(s_counts));
     
     vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
     xprintf_P(PSTR("ADCres=%d\r\n"), adcCB.result);
@@ -715,6 +763,9 @@ bool cmd_test_procedimientos( char *s_pid )
             break;
         case 13:
             action_llenado_con_reactivos(true);
+            break;
+        case 14:
+            action_lavado_calibracion(true);
             break;
         default:
             return(false);           
@@ -865,13 +916,27 @@ static bool test_kill(void)
             
         if ( xHandle_tkWan != NULL ) {
             vTaskSuspend( xHandle_tkWan );
-            //SYSTEM_ENTER_CRITICAL();
+            SYSTEM_ENTER_CRITICAL();
+            task_running &= ~WAN_WDG_gc;
             //tk_running[TK_WAN] = false;
-            //SYSTEM_EXIT_CRITICAL();
+            SYSTEM_EXIT_CRITICAL();
             xHandle_tkWan = NULL;
             return(true);
-        } 
-        
+        }  
+        return(false);
+    }
+
+    if (!strcmp_P( strupr(argv[2]), PSTR("SYS"))  ) {
+            
+        if ( xHandle_tkSys != NULL ) {
+            vTaskSuspend( xHandle_tkSys );
+            SYSTEM_ENTER_CRITICAL();
+            task_running &= ~SYS_WDG_gc;
+            //tk_running[TK_WAN] = false;
+            SYSTEM_EXIT_CRITICAL();
+            xHandle_tkSys = NULL;
+            return(true);
+        }  
         return(false);
     }
     
@@ -882,8 +947,6 @@ static bool test_display(void)
 {
 bool retS = false;
 uint8_t row,col;
-
-char *p;
 
 
     if (!strcmp_P( strupr(argv[2]), PSTR("BRILLO"))  ) {

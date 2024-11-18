@@ -62,7 +62,7 @@ bool RTC_has_drift(RtcTimeType_t *rtc_new, uint16_t max_drift );
 
 void RTC_rtc2str(char *str, RtcTimeType_t *rtc, bool format_long );
 bool RTC_str2rtc(char *str, RtcTimeType_t *rtc);
-void RTC_rtc2strplain(char *str );
+void RTC_rtc2strplain(char *s_date, char *s_time );
 
 // Direccion del bus I2C donde esta el RTC79410
 #define RTC79410_DEVADDR		   	0xDE

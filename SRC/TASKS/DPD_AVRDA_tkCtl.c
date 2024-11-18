@@ -47,9 +47,10 @@ void tkCtl(void * pvParameters)
     starting_flag = true;
     
     // Inicializo para tomar la primer medida en 5 minutos
-    systemVars.time2medida = 120;
+    systemVars.time2medida = 3600;
     systemVars.midiendo = false;
-    memcpy(&systemVars.timestamp[0], "000000-000000", sizeof(systemVars.timestamp));
+    memcpy(&systemVars.ts_date[0], "000000", sizeof(systemVars.ts_date));
+    memcpy(&systemVars.ts_time[0], "000000", sizeof(systemVars.ts_time));
     
  	for( ;; )
 	{
@@ -69,28 +70,25 @@ void tkCtl(void * pvParameters)
 //------------------------------------------------------------------------------
 void sys_watchdog_check(void)
 {
-    // El watchdog se inicializa en 2F.
+    // El watchdog se inicializa en 0x0F.
     // Cada tarea debe poner su bit en 0. Si alguna no puede, se resetea
     // Esta funcion se corre cada 5s (TKCTL_DELAY_S)
     
 static uint16_t wdg_count = 0;
 uint8_t i;
 
-    //xprintf_P(PSTR("wdg reset\r\n"));
-    wdt_reset();
-    return;
- 
     // EL wdg lo leo cada 30 secs ( 5 x 6 )
-    if ( wdg_count++ <  (30 / TKCTL_DELAY_S ) ) {
+    if ( wdg_count++ <  (120 / TKCTL_DELAY_S ) ) {
+        wdt_reset();
         return;
     }
    
-    //xprintf_P(PSTR("DEBUG: wdg check\r\n"));
+    xprintf_P(PSTR("DEBUG: wdg check [0x%02X]\r\n"), sys_watchdog );
     wdg_count = 0;
     
     // Analizo los watchdows individuales
     //xprintf_P(PSTR("tkCtl: check wdg [0x%02X]\r\n"), sys_watchdog );
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < NRO_WDG; i++) {
         // Si la tarea esta corriendo...
         if ( (task_running & ( 1<<i)) == 1) {
             // Si el wdg esta en 1 es que no pudo borrarlo !!!
@@ -145,9 +143,11 @@ bool f_status;
         // Armo el frame:
         dr.absorbancia = systemVars.absorbancia;
         dr.cloro_ppm = systemVars.absorbancia;
-        dr.S0 = systemVars.S0;
-        dr.S100 = systemVars.S100;
-        memcpy(&dr.timestamp[0], &systemVars.timestamp[0], sizeof(systemVars.timestamp));
+        dr.S0 = systemConf.S0;
+        dr.S100 = systemConf.S100;
+    
+        memcpy(&dr.ts_date[0], &systemVars.ts_date[0], sizeof(systemVars.ts_date));
+        memcpy(&dr.ts_time[0], &systemVars.ts_time[0], sizeof(systemVars.ts_time));
         
          // Agrego el timestamp.
         f_status = RTC_read_dtime( &dr.rtc);

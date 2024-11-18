@@ -205,8 +205,6 @@ bool lcd_check_response(uint8_t rsp_code)
 //------------------------------------------------------------------------------
 bool lcd_cmd_ping(void)
 {
-   
-bool retS = false;
     
     // Armo el paquete de PING
     TX_pkt.type = 0x00;
@@ -224,8 +222,6 @@ bool retS = false;
 bool lcd_cmd_clear(void)
 {
     // Armo el paquete de CLEAR SCREEN
-   
-bool retS = false;
 
     TX_pkt.type = 0x06;
     TX_pkt.data_length = 0x00;
@@ -242,7 +238,6 @@ bool retS = false;
 bool lcd_cmd_send_data(uint8_t row, uint8_t col, uint8_t *msg)
 {
     // Envio datos a una linea !!
-bool retS = false;
 
     memset( &TX_pkt, '\0', sizeof(TX_pkt));
 
@@ -265,7 +260,6 @@ bool retS = false;
 //------------------------------------------------------------------------------
 bool lcd_cmd_brightness(uint8_t brillo)
 {
-    bool retS = false;
 
     TX_pkt.type = 0x0E;
     TX_pkt.data_length = 0x01;

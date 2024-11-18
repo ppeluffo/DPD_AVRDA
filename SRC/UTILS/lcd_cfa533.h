@@ -68,6 +68,8 @@ bool lcd_cmd_read(void);
 bool lcd_cmd_clearbuff(void);
 uint16_t CRC16(uint8_t *bufptr, uint16_t len);
 
+void fsm_set_keypressed(uint8_t key);
+
 #ifdef	__cplusplus
 }
 #endif

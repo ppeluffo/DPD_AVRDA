@@ -22,21 +22,6 @@ char msg[16];
 
 void await(uint16_t secs );
 
-void action_inicio_sistema( bool debug);
-void action_lavado_reservorio_de_muestra(bool debug);
-void action_llenado_reservorio_con_muestra_a_medir(bool debug);
-void action_purga_canal_muestra(bool debug);
-void action_lavado_celda(bool debug);
-void action_ajustes_fotometricos(bool debug);
-void action_medicion(bool debug);
-void action_lavado_final(bool debug);
-void action_fin_sistema(bool debug);
-void action_llenar_celda_medida(bool debug);
-void action_vaciar_celda_medida(bool debug);
-void action_calibrar(bool debug);
-void action_llenado_con_reactivos(bool debug);
-void action_medida_completa(bool debug);
-
 void cbk_inicio_sistema(void);
 void cbk_lavado_reservorio_de_muestra(void);
 void cbk_llenado_reservorio_con_muestra_a_medir(void);
@@ -49,6 +34,7 @@ void cbk_fin_sistema(void);
 void cbk_llenar_celda_medida(void);
 void cbk_vaciar_celda_medida(void);
 void cbk_llenado_con_reactivos(void);
+void cbk_lavado_calibracion(void);
 void cbk_calibrar(void);
 void cbk_medida_completa(void);
 
@@ -171,6 +157,17 @@ void action_vaciar_celda_medida(bool debug)
     }
     
     actionCB.fn = cbk_vaciar_celda_medida;
+    actionCB.standby = false;
+    actionCB.debug = debug;    
+}
+//------------------------------------------------------------------------------
+void action_lavado_calibracion(bool debug)
+{
+    if ( systemVars.midiendo == true) {
+        xprintf_P(PSTR("ERROR: Lavado de Calibracion\r\n"));
+    }
+    
+    actionCB.fn = cbk_lavado_calibracion;
     actionCB.standby = false;
     actionCB.debug = debug;    
 }
@@ -463,7 +460,7 @@ bool debug = actionCB.debug;
     // Registro la señal fotometrica en 128 medidas ( 0%T )
     adc_read(debug, 128);
     await(1);
-    systemVars.S0 = adcCB.result;
+    systemConf.S0 = adcCB.result;
 
     // Prendo el opto
     opto_on(debug);
@@ -473,7 +470,7 @@ bool debug = actionCB.debug;
     // Registro la señal fotometrica en 128 medidas ( 100%T )
     adc_read(debug, 128);
     await(1);
-    systemVars.S100 = adcCB.result;
+    systemConf.S100 = adcCB.result;
     
     // Apago el opto
     opto_off(debug);
@@ -485,8 +482,8 @@ bool debug = actionCB.debug;
     vTaskDelay( ( TickType_t)( ( T_VACIADO_CELDA * 1000 ) / portTICK_PERIOD_MS ) );
 
     if ( debug) {
-        xprintf_P(PSTR("S0=%d\r\n"), systemVars.S0);
-        xprintf_P(PSTR("S100=%d\r\n"), systemVars.S100);
+        xprintf_P(PSTR("S0=%d\r\n"), systemConf.S0);
+        xprintf_P(PSTR("S100=%d\r\n"), systemConf.S100);
     }
     
     if (debug) {
@@ -516,7 +513,7 @@ bool debug = actionCB.debug;
         // Cierro V2
         valve_2_close(debug);
         await(1); 
-        vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
+        vTaskDelay( ( TickType_t)( 3000 / portTICK_PERIOD_MS ) );
         
         // Prendo M0 10s para dispensar 0.5ml de reactivo DPD
         pump_0_run(debug, T_DISPENSAR_DPD);
@@ -529,7 +526,7 @@ bool debug = actionCB.debug;
         vTaskDelay( ( TickType_t)( (T_DISPENSAR_BUFFER * 1000) / portTICK_PERIOD_MS ) );
         
         // Prendo M2  para dispensar 10mL de muestra
-        action_pump_2_run(debug, T_LLENADO_CELDA );
+        pump_2_run(debug, T_LLENADO_CELDA );
         // Espero
         vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA *1000) / portTICK_PERIOD_MS ) );
     
@@ -545,9 +542,9 @@ bool debug = actionCB.debug;
         lp = adcCB.result;
         
         // Calculamos la absorbancia
-        denom = (1.0*(systemVars.S100 - systemVars.S0));
+        denom = (1.0*(systemConf.S100 - systemConf.S0));
         if ( denom != 0 ) {
-            pabs[ciclo] = -1.0 * log10f ( 1.0*( lp - systemVars.S0)/denom );
+            pabs[ciclo] = -1.0 * log10f ( 1.0*( lp - systemConf.S0)/denom );
             systemVars.absorbancia += pabs[ciclo];
         
             if (debug) {
@@ -577,7 +574,7 @@ bool debug = actionCB.debug;
     systemVars.cloro_ppm = cloro_from_absorbancia(systemVars.absorbancia, debug);
     
     // Agrego el timestamp de cuando tome la medida
-    RTC_rtc2strplain(&systemVars.timestamp[0]);
+    RTC_rtc2strplain(&systemVars.ts_date[0], &systemVars.ts_time[0]);
    
     if (debug) {
         xprintf_P(PSTR(">>END\r\n"));
@@ -795,6 +792,35 @@ bool debug = actionCB.debug;
     }
 }
 //------------------------------------------------------------------------------
+void cbk_lavado_calibracion(void)
+{
+   
+    /*
+     * Realiza todo el ciclo de medida
+     */
+ 
+ bool debug = actionCB.debug;
+ 
+    if (debug) {
+        xprintf_P(PSTR(">>Lavado de Calibracion: START\r\n"));
+    }
+    
+    fsm_telepronter("Lavado Cal.");
+    
+    cbk_inicio_sistema();
+    cbk_llenado_reservorio_con_muestra_a_medir();
+    cbk_lavado_celda();
+    cbk_lavado_celda();
+          
+    // Abro V2: Vacio el canal de muestra (por las dudas)
+    valve_2_open(debug);
+    await(1);
+ 
+    if (debug) {
+        xprintf_P(PSTR(">>END\r\n"));
+    }
+}
+//------------------------------------------------------------------------------
 void cbk_calibrar(void)
 {
    
@@ -810,24 +836,10 @@ void cbk_calibrar(void)
     
     fsm_telepronter("Calibrar");
     
-    // Apago el opto
-    opto_off(debug);
-    await(1);
-     
-    // Cierro V0: No entra agua de muestra
-    valve_0_close(debug);
-    valve_1_close(debug);
-    await(1);
-    // Abro V2: Vacio el canal de muestra (por las dudas)
-    valve_2_open(debug);
-    await(1);
+    cbk_inicio_sistema();
 
-    //proc_inicio_sistema(debug);
-    //proc_lavado_reservorio_de_muestra(debug);
-    //proc_llenado_reservorio_con_muestra_a_medir(debug);
-    //proc_purga_canal_muestra(debug);
-    cbk_lavado_celda();
     cbk_ajustes_fotometricos();
+       
     cbk_medicion();
    
     // Apago el opto
@@ -906,112 +918,172 @@ void action_opto_on(bool debug)
      * Implementacion de la accion de prender el opto por tkSys
      */
     
-    optoCB.debug = debug;
-    actionCB.fn = cbk_opto_on;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        optoCB.debug = debug;
+        actionCB.fn = cbk_opto_on;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_opto_off(bool debug)
 {
-    optoCB.debug = debug;   
-    actionCB.fn = cbk_opto_off;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        optoCB.debug = debug;   
+        actionCB.fn = cbk_opto_off;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_valve_0_open(bool debug)
 {
-    valveCB_0.debug = debug; 
-    actionCB.fn = cbk_valve_0_open;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        valveCB_0.debug = debug; 
+        actionCB.fn = cbk_valve_0_open;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_valve_0_close(bool debug)
 {
-    valveCB_0.debug = debug;   
-    actionCB.fn = cbk_valve_0_close;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        valveCB_0.debug = debug;   
+        actionCB.fn = cbk_valve_0_close;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_valve_1_open(bool debug)
 {
-    valveCB_1.debug = debug;
-    actionCB.fn = cbk_valve_1_open;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        valveCB_1.debug = debug;
+        actionCB.fn = cbk_valve_1_open;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_valve_1_close(bool debug)
 {
-    valveCB_1.debug = debug;    
-    actionCB.fn = cbk_valve_1_close;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        valveCB_1.debug = debug;    
+        actionCB.fn = cbk_valve_1_close;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_valve_2_open(bool debug)
 {
-    valveCB_2.debug = debug;   
-    actionCB.fn = cbk_valve_2_open;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        valveCB_2.debug = debug;   
+        actionCB.fn = cbk_valve_2_open;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_valve_2_close(bool debug)
 {
-    valveCB_2.debug = debug;    
-    actionCB.fn = cbk_valve_2_close;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        valveCB_2.debug = debug;    
+        actionCB.fn = cbk_valve_2_close;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_pump_0_run( bool debug, uint16_t secs)
 {
-    pumpCB_0.debug = debug;
-    pumpCB_0.secs = secs;   
-    actionCB.fn = cbk_pump_0_run;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        pumpCB_0.debug = debug;
+        pumpCB_0.secs = secs;   
+        actionCB.fn = cbk_pump_0_run;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_pump_0_stop( bool debug)
 {
-    pumpCB_0.debug = debug;   
-    actionCB.fn = cbk_pump_0_stop;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        pumpCB_0.debug = debug;   
+        actionCB.fn = cbk_pump_0_stop;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_pump_1_run( bool debug, uint16_t secs)
 {
-    pumpCB_1.debug = debug;
-    pumpCB_1.secs = secs;    
-    actionCB.fn = cbk_pump_1_run;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        pumpCB_1.debug = debug;
+        pumpCB_1.secs = secs;    
+        actionCB.fn = cbk_pump_1_run;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_pump_1_stop( bool debug)
 {
-    pumpCB_1.debug = debug;   
-    actionCB.fn = cbk_pump_1_stop;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        pumpCB_1.debug = debug;   
+        actionCB.fn = cbk_pump_1_stop;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_pump_2_run( bool debug, uint16_t secs)
 {
-    pumpCB_2.debug = debug;
-    pumpCB_2.secs = secs; 
-    actionCB.fn = cbk_pump_2_run;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        pumpCB_2.debug = debug;
+        pumpCB_2.secs = secs; 
+        actionCB.fn = cbk_pump_2_run;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_pump_2_stop( bool debug)
 {
-    pumpCB_2.debug = debug;   
-    actionCB.fn = cbk_pump_2_stop;
-    actionCB.standby = false;
+    if (actionCB.standby) {
+        pumpCB_2.debug = debug;   
+        actionCB.fn = cbk_pump_2_stop;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
 }
 //------------------------------------------------------------------------------
 void action_adc_read( bool debug, uint16_t counts)
 {
-    adcCB.debug = debug;
-    adcCB.counts = counts;
+    if (actionCB.standby) {
+        adcCB.debug = debug;
+        adcCB.counts = counts;
     
-    actionCB.fn = cbk_adc_read;
-    actionCB.standby = false;
+        actionCB.fn = cbk_adc_read;
+        actionCB.standby = false;
+    } else {
+        xprintf_P(PSTR("Busy\r\n"));
+    }
     
     // El resultado queda en adcCB.result
 }

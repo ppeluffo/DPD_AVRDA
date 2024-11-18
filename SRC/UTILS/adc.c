@@ -259,6 +259,7 @@ void adc_read(bool debug, uint16_t samples)
 
     adcCB.running = true;
     adcCB.debug = debug;
+    adcCB.counts = samples;
     
     cbk_adc_read();
 }

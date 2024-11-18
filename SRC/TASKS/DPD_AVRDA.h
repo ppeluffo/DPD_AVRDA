@@ -89,7 +89,7 @@ extern "C" {
 #include "lcd_cfa533.h"
 
 #define FW_REV "1.0.0"
-#define FW_DATE "@ 20241113"
+#define FW_DATE "@ 20241118"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -158,13 +158,13 @@ bool starting_flag;
 // Mensajes entre tareas
 #define SIGNAL_FRAME_READY		0x01
 
-#define TIMESTAMP_SIZE 16
+#define TIMESTAMP_SIZE 8
 
 typedef struct { 
-    uint16_t S0, S100;
     float cloro_ppm;
     float absorbancia;
-    char timestamp[TIMESTAMP_SIZE];
+    char ts_date[TIMESTAMP_SIZE];
+    char ts_time[TIMESTAMP_SIZE];
     uint32_t time2medida;
     bool midiendo;
     bool debug;
@@ -174,11 +174,13 @@ systemVars_t systemVars;
 
 typedef struct {
     char dlgid[DLGID_LENGTH];
+    uint16_t S0, S100;
     uint16_t timerpoll;
     uint32_t timermedida;
     float adc_cal_volts;
     uint16_t adc_cal_factor;
     uint16_t pump_freq[MAX_PUMPS];
+    char calibration_date[TIMESTAMP_SIZE];
     float xCal[CAL_MAX_POINTS];     // Absorbancias
     float yCal[CAL_MAX_POINTS];     // Concentracion de cloro
 } systemConf_t;
@@ -191,7 +193,8 @@ typedef struct {
     float cloro_ppm;
     uint16_t S0;
     uint16_t S100;
-    char timestamp[16];
+    char ts_date[TIMESTAMP_SIZE];
+    char ts_time[TIMESTAMP_SIZE];
     float bt12v;
     RtcTimeType_t rtc;	    
 } dataRcd_s;
@@ -206,7 +209,6 @@ typedef struct {
     key_t keypress;
 } FSMdisplay_CB_t;
 
-void fsm_set_keypressed(uint8_t key);
 void fsm_telepronter(char *msg);
 void fsm_display_modo_medir(void);
 
@@ -219,10 +221,14 @@ void u_config_default(void);
 void SYSTEM_ENTER_CRITICAL(void);
 void SYSTEM_EXIT_CRITICAL(void);
 void u_kick_wdt( uint8_t wdg_gc);
-
+bool u_config_debug( char *tipo, char *valor);
 void u_data_resync_clock( char *str_time, bool force_adjust);
+int16_t u_days2calibrate(void);
 
-//bool WAN_process_data_rcd( dataRcd_s *dataRcd);
+bool WAN_process_data_rcd( dataRcd_s *dataRcd);
+void WAN_config_debug(bool debug );
+bool WAN_read_debug(void);
+bool WAN_is_online(void);
 
 struct {
     void (*fn)(void);
@@ -233,7 +239,7 @@ struct {
 
 #define CICLOS_MEDIDA            1
 #define T_LLENADO_RESERVORIO_MAX    15
-#define CNT_LLENADO_RESERVORIO  35000
+#define CNT_LLENADO_RESERVORIO  25000
 #define T_PURGA_CANAL           15
 #define T_VACIADO_RESERVORIO    20
 #define T_LAVADO_CELDA          25
@@ -242,6 +248,22 @@ struct {
 #define T_DISPENSAR_DPD         13  //0.5 mL
 #define T_DISPENSAR_BUFFER      13  //0.5 mL
 #define CICLOS_LAVADO            4
+
+void action_inicio_sistema( bool debug);
+void action_lavado_reservorio_de_muestra(bool debug);
+void action_llenado_reservorio_con_muestra_a_medir(bool debug);
+void action_purga_canal_muestra(bool debug);
+void action_lavado_celda(bool debug);
+void action_ajustes_fotometricos(bool debug);
+void action_medicion(bool debug);
+void action_lavado_final(bool debug);
+void action_fin_sistema(bool debug);
+void action_llenar_celda_medida(bool debug);
+void action_vaciar_celda_medida(bool debug);
+void action_calibrar(bool debug);
+void action_lavado_calibracion(bool debug);
+void action_llenado_con_reactivos(bool debug);
+void action_medida_completa(bool debug);
 
 void action_await(void);
 
@@ -282,17 +304,34 @@ void proc_llenado_con_reactivos(bool debug);
 float cloro_from_absorbancia(float abs, bool debug);
 
 // No habilitado PLT_WDG !!!
-#define WDG_bm 0x03     // Pone todos los bits habilitados en 1
-#define WDG_INIT() ( sys_watchdog = WDG_bm )
+
+
+
 
 uint8_t sys_watchdog;
 uint8_t task_running;
 
+// NO CONSIDERO SYS_WDG
+
+#define WDG_bm 0x1F     // Pone todos los bits habilitados en 1
+#define WDG_INIT() ( sys_watchdog = WDG_bm )
+
+#define NRO_WDG      5
+
 #define CMD_WDG_bp     0x01
-#define SYS_WDG_bp     0x02
+#define MRX_WDG_bp     0x02
+#define WAN_WDG_bp     0x03
+#define LRX_WDG_bp     0x04
+#define LCD_WDG_bp     0x05
+#define SYS_WDG_bp     0x06
 
 #define CMD_WDG_gc          (0x01 << 0)
-#define SYS_WDG_gc          (0x01 << 1)
+#define MRX_WDG_gc          (0x01 << 1)
+#define WAN_WDG_gc          (0x01 << 2)
+#define LRX_WDG_gc          (0x01 << 3)
+#define LCD_WDG_gc          (0x01 << 4)
+#define SYS_WDG_gc          (0x01 << 5)
+
 
 #endif	/* XC_HEADER_TEMPLATE_H */
 

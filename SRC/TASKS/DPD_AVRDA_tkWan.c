@@ -1,4 +1,4 @@
-#include "DPD_AVRDA.h"
+    #include "DPD_AVRDA.h"
 #include "frtos_cmd.h"
       
 /*
@@ -45,8 +45,6 @@ static bool wan_check_response ( const char *s);
 static void wan_xmit_out(void);
 static void wan_print_RXbuffer(void);
 
-fat_s l_fat1;
-
 uint16_t uxHighWaterMark;
 
 char tmpLocalStr[64] = { 0 };
@@ -55,6 +53,7 @@ char tmpLocalStr[64] = { 0 };
 #define RECOVERID_TRYES         2
 #define DATA_TRYES              2
 
+uint16_t link_tryes;
 
 //------------------------------------------------------------------------------
 void tkWan(void * pvParameters)
@@ -73,7 +72,7 @@ void tkWan(void * pvParameters)
         vTaskDelay( ( TickType_t)( 100 / portTICK_PERIOD_MS ) );
     
     SYSTEM_ENTER_CRITICAL();
-    //tk_running[TK_WAN] = true;
+    task_running |= WAN_WDG_gc;
     SYSTEM_EXIT_CRITICAL();
     
     sem_WAN = xSemaphoreCreateMutexStatic( &WAN_xMutexBuffer );
@@ -87,7 +86,9 @@ void tkWan(void * pvParameters)
     
 	// loop
 	for( ;; )
-	{       
+	{      
+        u_kick_wdt(WAN_WDG_gc);
+        
         switch(wan_state) {
             case WAN_APAGADO:
                 wan_state_apagado();
@@ -121,8 +122,6 @@ uint32_t waiting_secs;
 
 //    uxHighWaterMark = SPYuxTaskGetStackHighWaterMark( NULL );
 //    xprintf_P(PSTR("STACK apagado_in = %d\r\n"), uxHighWaterMark );
-    
-    //u_kick_wdt(TK_WAN);
     
     xprintf_P(PSTR("WAN:: State APAGADO\r\n"));
     // Siempre al entrar debo apagar el modem.
@@ -166,9 +165,7 @@ static void wan_state_offline(void)
 uint8_t i;
 bool atmode = false;
 bool save_dlg_config = false;
-
-    //u_kick_wdt(TK_WAN);
-    
+   
     xprintf_P(PSTR("WAN:: State OFFLINE\r\n"));
     
     // Entro en modo AT
@@ -201,6 +198,7 @@ bool save_dlg_config = false;
     MODEM_exit_mode_at(false);
           
     wan_state = WAN_LINK;
+    link_tryes = PING_TRYES;
     
 quit:
    
@@ -208,6 +206,68 @@ quit:
 }
 //------------------------------------------------------------------------------
 static void wan_state_link(void)
+{
+  
+uint16_t timeout;
+bool retS = false;
+
+// ENTRY:
+    
+    if ( link_tryes ==  PING_TRYES) {
+        // Primera vez que entro en la función
+        xprintf_P(PSTR("WAN:: State LINK\r\n"));
+ 
+        // Armo el frame
+        while ( xSemaphoreTake( sem_WAN, MSTOTAKEWANSEMPH ) != pdTRUE )
+            vTaskDelay( ( TickType_t)( 1 ) );   
+        memset(wan_tx_buffer, '\0', WAN_TX_BUFFER_SIZE);
+        sprintf_P( wan_tx_buffer, PSTR("ID=%s&TYPE=%s&VER=%s&CLASS=PING"), systemConf.dlgid, FW_TYPE, FW_REV );  
+        xSemaphoreGive( sem_WAN );
+    }
+
+// LOOP:
+       
+    if ( link_tryes-- > 0) {
+        // Envio el frame
+        wan_xmit_out();
+        // Espero respuesta chequeando cada 1s durante 15s.
+        timeout = 15;
+        while ( timeout-- > 0) {
+            vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+            if ( wan_check_response("</html>") ) {
+                wan_print_RXbuffer();
+                if ( wan_check_response("CLASS=PONG")) {        
+                    retS = wan_process_rsp_ping();  
+                    goto exit;
+                }
+            }    
+        }
+        // Expiro los 15s sin respuesta: timeut, retS = false
+   }
+   // Expiro link_tryes sin respuesta: retS = false
+
+// EXIT:
+exit:
+    
+    // Ping respondió correctamente
+    if (retS == true) {
+        wan_state = WAN_ONLINE_DATA;
+        link_up4data = false;
+        return;
+    }
+
+    // Maximo reintento de pings
+    if (link_tryes == 0) {
+        wan_state = WAN_APAGADO;
+        return;
+    }
+
+    // Seguimos probando. No cambio de estado
+    return;
+              
+}
+//------------------------------------------------------------------------------
+static void __wan_state_link(void)
 {
     /*
      * Espera que exista link.
@@ -235,6 +295,43 @@ quit:
 }
 //------------------------------------------------------------------------------
 static void wan_state_online_data(void)
+{
+  
+bool retS;
+
+// ENTRY
+    if ( link_up4data == false) {
+        link_up4data = true;
+        xprintf_P(PSTR("WAN:: State ONLINE_DATA\r\n"));
+    }
+
+// LOOP
+    
+    if ( drWanBuffer.dr_ready ) {
+        // Hay datos para transmitir
+        retS =  wan_process_frame_data( &drWanBuffer.dr);
+        if (retS) {
+            drWanBuffer.dr_ready = false;
+        } else {
+            // Cayo el enlace ???
+            wan_state = WAN_LINK;
+            link_tryes = PING_TRYES;
+            link_up4data = false;
+            drWanBuffer.dr_ready = false;
+            vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
+            goto quit;
+        }
+    }
+        
+    ulTaskNotifyTake( pdTRUE, ( TickType_t)( (60000) / portTICK_PERIOD_MS) );
+ 
+quit:
+                
+    return;
+               
+}
+//------------------------------------------------------------------------------
+static void __wan_state_online_data(void)
 {
     /*
      * Este estado es cuando estamos en condiciones de enviar frames de datos
@@ -265,6 +362,7 @@ bool res;
             } else {
                 // Cayo el enlace ???
                 wan_state = WAN_LINK;
+                link_tryes = PING_TRYES;
                 drWanBuffer.dr_ready = false;
                 vTaskDelay( ( TickType_t)( 10000 / portTICK_PERIOD_MS ) );
                 goto quit;
@@ -296,7 +394,7 @@ uint16_t tryes;
 uint16_t timeout;
 bool retS = false;
 
-    xprintf_P(PSTR("WAN:: LINK.\r\n"));
+    xprintf_P(PSTR("WAN:: PING.\r\n"));
  
     // Armo el frame
     while ( xSemaphoreTake( sem_WAN, MSTOTAKEWANSEMPH ) != pdTRUE )
@@ -355,9 +453,14 @@ uint8_t tryes = 0;
 uint8_t timeout = 0;
 bool retS = false;
 int16_t fptr;
+int16_t days2calibrate;
 
-    xprintf_P(PSTR("WAN:: DATA.\r\n"));
+    if (f_debug_comms ) {
+        xprintf_P(PSTR("WAN:: DATA.\r\n"));
+    }
 
+    days2calibrate = u_days2calibrate();
+    
     while ( xSemaphoreTake( sem_WAN, MSTOTAKEWANSEMPH ) != pdTRUE )
         vTaskDelay( ( TickType_t)( 1 ) );
     
@@ -372,9 +475,13 @@ int16_t fptr;
     
     // Medidas de CLORO:
     fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&S0=%d&S100=%d"), dr->S0, dr->S100);
-    fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&ABS=%0.3f&CLPPM=%0.3f"), dr->absorbancia, dr->cloro_ppm);
-    fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&TS=%s"), dr->timestamp);
+    fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&ABS=%0.3f&CLPPM=%0.2f"), dr->absorbancia, dr->cloro_ppm);
+    fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&TSdate=%s&TStime=%s"), dr->ts_date, dr->ts_time);
 
+    
+    if ( days2calibrate  < 1 ) {
+        fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&ALARM=CALIBRACION"));
+    }
     // Proceso. Envio hasta 2 veces el frame y espero hasta 10s la respuesta
     tryes = DATA_TRYES;
     while (tryes-- > 0) {
@@ -394,7 +501,9 @@ int16_t fptr;
             }
         }  
         
-        xprintf_P(PSTR("WAN:: DATA RETRY\r\n"));       
+        if (f_debug_comms ) {
+            xprintf_P(PSTR("WAN:: DATA RETRY\r\n")); 
+        }
     }
  
     // Expiro el tiempo sin respuesta del server.
@@ -481,11 +590,11 @@ static void wan_xmit_out(void )
     //lBchar_Flush(&wan_rx_lbuffer);
     MODEM_flush_rx_buffer();
     //xfprintf_P( fdWAN, PSTR("%s"), wan_tx_buffer); 
-    MODEM_txmit(&wan_tx_buffer[0]);
+    MODEM_txmit( &wan_tx_buffer[0]);
     
-    //if (f_debug_comms ) {
+    if (f_debug_comms ) {
         xfprintf_P( fdTERM, PSTR("Xmit-> %s\r\n"), &wan_tx_buffer);
-    //}
+    }
     
 }
 //------------------------------------------------------------------------------
@@ -516,9 +625,9 @@ char *p;
             
     p = MODEM_get_buffer_ptr();
     //p = lBchar_get_buffer(&wan_rx_lbuffer);
-    //if (f_debug_comms) {
+    if (f_debug_comms) {
         xprintf_P(PSTR("Rcvd-> %s\r\n"), p );
-    //}
+    }
 }
 //------------------------------------------------------------------------------
 void wan_prender_modem(void)
@@ -585,8 +694,9 @@ bool retS = false;
         
     } else {
 
-        xprintf_P(PSTR("WAN:: TX Fail. Link Down.\r\n"));
-   
+        if (f_debug_comms) {
+            xprintf_P(PSTR("WAN:: TX Fail. Link Down.\r\n"));
+        }
     }
 
     return(retS);
@@ -613,5 +723,10 @@ void WAN_config_debug(bool debug )
 bool WAN_read_debug(void)
 {
     return (f_debug_comms);
+}
+//------------------------------------------------------------------------------
+bool WAN_is_online(void)
+{
+    return(link_up4data);
 }
 //------------------------------------------------------------------------------

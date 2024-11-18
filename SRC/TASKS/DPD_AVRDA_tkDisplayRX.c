@@ -19,18 +19,18 @@ uint8_t c = 0;
     while ( ! starting_flag )
         vTaskDelay( ( TickType_t)( 100 / portTICK_PERIOD_MS ) );
 
-    //SYSTEM_ENTER_CRITICAL();
-    //tk_running[TK_MODEMRX] = true;
-    //SYSTEM_EXIT_CRITICAL();
+    SYSTEM_ENTER_CRITICAL();
+    task_running |= LRX_WDG_gc;
+    SYSTEM_EXIT_CRITICAL();
         
-    lBchar_CreateStatic ( &lcd_rx_lbuffer, lcd_rx_buffer, LCD_RX_BUFFER_SIZE );
+    lBchar_CreateStatic ( &lcd_rx_lbuffer, (char *)&lcd_rx_buffer[0], LCD_RX_BUFFER_SIZE );
      
     xprintf_P(PSTR("Starting tkLcdRX..\r\n" ));
   
 	// loop
 	for( ;; )
 	{
-        //u_kick_wdt(TK_MODEMRX);
+        u_kick_wdt(LRX_WDG_gc);
        
         while(true) {
             c = '\0';	// Lo borro para que luego del un CR no resetee siempre el timer.
