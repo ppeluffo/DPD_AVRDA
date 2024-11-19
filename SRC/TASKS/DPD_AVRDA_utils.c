@@ -92,13 +92,15 @@ void u_kick_wdt( uint8_t wdg_gc)
 void u_config_default(void)
 {
 
-    memcpy(systemConf.dlgid, "DEFAULT", sizeof(DLGID_LENGTH));
+    memcpy(&systemConf.dlgid[0], "DEFAULT", DLGID_LENGTH);
+    memcpy(&systemConf.calibration_date[0], "240101", TIMESTAMP_SIZE);
     systemConf.timerpoll = 60;
     systemConf.timermedida = 10800;
     systemConf.adc_cal_factor = 3400;
     systemConf.adc_cal_volts = 3.0;
     systemConf.S0 = 0;
     systemConf.S100 = 2750;
+    
             
     // Configuro a default todas las configuraciones locales
     pump_config_default();

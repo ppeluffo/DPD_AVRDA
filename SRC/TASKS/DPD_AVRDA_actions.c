@@ -38,6 +38,7 @@ void cbk_lavado_calibracion(void);
 void cbk_calibrar(void);
 void cbk_medida_completa(void);
 
+int16_t compare( const void* a, const void* b);
 
 //------------------------------------------------------------------------------
 void action_inicio_sistema( bool debug)
@@ -491,11 +492,11 @@ bool debug = actionCB.debug;
     }    
 }
 //------------------------------------------------------------------------------
-void cbk_medicion(void)
+void __cbk_medicion(void)
 {
     
 uint8_t ciclo;
-uint16_t lp = 0;
+uint16_t adc = 0;
 float denom;
 float pabs[CICLOS_MEDIDA];
 bool debug = actionCB.debug;
@@ -506,7 +507,13 @@ bool debug = actionCB.debug;
 
     fsm_telepronter("Medicion");    
     
-    systemVars.absorbancia = 0.0;
+    //systemVars.absorbancia = 0.0;
+    
+    // Prendo el OPTO
+    opto_on(debug);
+    await(1);
+    // Espero 5 que se estabilize la señal fotometrica
+    //vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
     
     for (ciclo = 0; ciclo <  CICLOS_MEDIDA; ciclo++) {
            
@@ -530,30 +537,24 @@ bool debug = actionCB.debug;
         // Espero
         vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA *1000) / portTICK_PERIOD_MS ) );
     
-        // Prendo el OPTO
-        opto_on(debug);
-        await(1);
-        // Espero 5 que se estabilize la señal fotometrica
-        vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-        
         // Leo la señal fotometrica
         adc_read(debug, 128);
         await(1);
-        lp = adcCB.result;
+        adc = adcCB.result;
         
         // Calculamos la absorbancia
         denom = (1.0*(systemConf.S100 - systemConf.S0));
         if ( denom != 0 ) {
-            pabs[ciclo] = -1.0 * log10f ( 1.0*( lp - systemConf.S0)/denom );
-            systemVars.absorbancia += pabs[ciclo];
+            pabs[ciclo] = -1.0 * log10f ( 1.0*( adc - systemConf.S0)/denom );
+            //systemVars.absorbancia += pabs[ciclo];
         
             if (debug) {
-                xprintf_P(PSTR("Ciclo=%d, LP=%d, abs=%0.4f\r\n"), ciclo, lp, pabs[ciclo]);
+                xprintf_P(PSTR("Ciclo=%d, ADC=%d, abs=%0.4f\r\n"), ciclo, adc, pabs[ciclo]);
             }
             
         } else {
            pabs[ciclo] = -1; 
-           systemVars.absorbancia += pabs[ciclo];
+           //systemVars.absorbancia += pabs[ciclo];
            xprintf_P(PSTR("ERROR: S0==S100, abs=%0.4f\r\n"), pabs[ciclo]);
            
         }
@@ -569,6 +570,11 @@ bool debug = actionCB.debug;
     opto_off(debug);
     await(1);
     
+    /*
+     * Calculo la absorbancia:
+     * Me quedo con las (n-1) mejores medidas
+     */
+    
     systemVars.absorbancia /= CICLOS_MEDIDA;
     
     systemVars.cloro_ppm = cloro_from_absorbancia(systemVars.absorbancia, debug);
@@ -576,6 +582,123 @@ bool debug = actionCB.debug;
     // Agrego el timestamp de cuando tome la medida
     RTC_rtc2strplain(&systemVars.ts_date[0], &systemVars.ts_time[0]);
    
+    if (debug) {
+        xprintf_P(PSTR(">>END\r\n"));
+    }     
+}
+//------------------------------------------------------------------------------
+int16_t compare( const void* a, const void* b)
+{
+   int16_t int_a = * ( (int16_t*) a );
+   int16_t int_b = * ( (int16_t*) b );
+
+   // an easy expression for comparing
+   return (int_a > int_b) - (int_a < int_b);
+}
+//------------------------------------------------------------------------------
+void cbk_medicion(void)
+{
+    
+uint8_t ciclo;
+float denom;
+uint16_t l_adc[CICLOS_MEDIDA];
+bool debug = actionCB.debug;
+uint8_t i;
+float tmp = 0.0;
+
+    if(debug) {
+        xprintf_P(PSTR(">>Medicion: START\r\n"));
+    }
+
+    fsm_telepronter("Medicion");    
+    
+    //systemVars.absorbancia = 0.0;
+    
+    // Prendo el OPTO
+    opto_on(debug);
+    await(1);
+    // Espero 5 que se estabilize la señal fotometrica
+    //vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
+    
+    for (ciclo = 0; ciclo <  CICLOS_MEDIDA; ciclo++) {
+           
+        // Cierro V2
+        valve_2_close(debug);
+        await(1); 
+        vTaskDelay( ( TickType_t)( 3000 / portTICK_PERIOD_MS ) );
+        
+        // Prendo M0 10s para dispensar 0.5ml de reactivo DPD
+        pump_0_run(debug, T_DISPENSAR_DPD);
+        // Espero
+        vTaskDelay( ( TickType_t)( (T_DISPENSAR_DPD * 1000) / portTICK_PERIOD_MS ) );
+        
+        // Prendo M1 11.5 para dispensar 0.5ml de buffer
+        pump_1_run(debug, T_DISPENSAR_BUFFER);
+        // Espero
+        vTaskDelay( ( TickType_t)( (T_DISPENSAR_BUFFER * 1000) / portTICK_PERIOD_MS ) );
+        
+        // Prendo M2  para dispensar 10mL de muestra
+        pump_2_run(debug, T_LLENADO_CELDA );
+        // Espero
+        vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA *1000) / portTICK_PERIOD_MS ) );
+    
+        // Leo la señal fotometrica
+        adc_read(debug, 128);
+        await(1);
+        l_adc[ciclo] = adcCB.result;
+        if (debug) {
+            xprintf_P(PSTR("Ciclo=%d, ADC=%d\r\n"), ciclo, l_adc[ciclo]);
+        }
+        
+        // Abro V2 para vaciar la celda de reacción
+        valve_2_open(debug);
+        await(1); 
+        vTaskDelay( ( TickType_t)( (T_VACIADO_CELDA * 1000) / portTICK_PERIOD_MS ) );
+    
+    }
+
+    // Apago el OPTO
+    opto_off(debug);
+    await(1);
+    
+    /*
+     * Calculo la absorbancia:
+     * Ordeno los datos y me quedo con las (n-1) mejores medidas
+     */
+    
+    // Ordeno
+    qsort( l_adc, CICLOS_MEDIDA, sizeof(int16_t), compare );
+    for(i=0; i<CICLOS_MEDIDA; i++) {
+        xprintf_P(PSTR("%d->%d\r\n"), i, l_adc[i]);
+    }
+
+    // Promedio los N-1 mejores.
+    // Como los ordene de menor a mayor, elimino el mayor !!!
+    tmp = 0.0;
+    for(i=0; i<(CICLOS_MEDIDA - 1); i++) {
+        tmp += (float)l_adc[i];
+        xprintf_P(PSTR("Prom(%d): tmp=%0.3f\r\n"), i, tmp);
+    }
+    tmp /= (CICLOS_MEDIDA - 1);
+    
+    xprintf_P(PSTR("tmp=%0.3f\r\n"), tmp);
+    
+    // Calculamos la absorbancia
+    denom = (1.0*(systemConf.S100 - systemConf.S0));
+    if ( denom != 0 ) {
+        systemVars.absorbancia = -1.0 * log10f ( 1.0*( tmp - systemConf.S0)/denom );   
+    } else {
+        systemVars.absorbancia = -1;    
+    }
+      
+    systemVars.cloro_ppm = cloro_from_absorbancia(systemVars.absorbancia, debug);
+    
+    // Agrego el timestamp de cuando tome la medida
+    RTC_rtc2strplain(&systemVars.ts_date[0], &systemVars.ts_time[0]);
+   
+    xprintf_P(PSTR("Abs=%0.3f\r\n"), systemVars.absorbancia);
+    xprintf_P(PSTR("CLppm=%0.3f\r\n"), systemVars.cloro_ppm);
+    
     if (debug) {
         xprintf_P(PSTR(">>END\r\n"));
     }     

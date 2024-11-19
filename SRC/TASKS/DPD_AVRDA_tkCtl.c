@@ -47,7 +47,7 @@ void tkCtl(void * pvParameters)
     starting_flag = true;
     
     // Inicializo para tomar la primer medida en 5 minutos
-    systemVars.time2medida = 3600;
+    systemVars.time2medida = TIMER2MEDIDA_INICIAL;
     systemVars.midiendo = false;
     memcpy(&systemVars.ts_date[0], "000000", sizeof(systemVars.ts_date));
     memcpy(&systemVars.ts_time[0], "000000", sizeof(systemVars.ts_time));
@@ -83,7 +83,7 @@ uint8_t i;
         return;
     }
    
-    xprintf_P(PSTR("DEBUG: wdg check [0x%02X]\r\n"), sys_watchdog );
+    //xprintf_P(PSTR("DEBUG: wdg check [0x%02X]\r\n"), sys_watchdog );
     wdg_count = 0;
     
     // Analizo los watchdows individuales
@@ -142,7 +142,7 @@ bool f_status;
         
         // Armo el frame:
         dr.absorbancia = systemVars.absorbancia;
-        dr.cloro_ppm = systemVars.absorbancia;
+        dr.cloro_ppm = systemVars.cloro_ppm;
         dr.S0 = systemConf.S0;
         dr.S100 = systemConf.S100;
     

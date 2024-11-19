@@ -89,7 +89,7 @@ extern "C" {
 #include "lcd_cfa533.h"
 
 #define FW_REV "1.0.0"
-#define FW_DATE "@ 20241118"
+#define FW_DATE "@ 20241119"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -237,7 +237,8 @@ struct {
     bool debug;
 } actionCB;
 
-#define CICLOS_MEDIDA            1
+#define TIMER2MEDIDA_INICIAL    1800
+#define CICLOS_MEDIDA            3
 #define T_LLENADO_RESERVORIO_MAX    15
 #define CNT_LLENADO_RESERVORIO  25000
 #define T_PURGA_CANAL           15
