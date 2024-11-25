@@ -139,8 +139,8 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("       8: fin_sistema\r\n"));
         xprintf_P( PSTR("       9: llenar_celda_medida\r\n"));
         xprintf_P( PSTR("       10: vaciar_celda_medida\r\n"));
-        xprintf_P( PSTR("       11: Calibrar\r\n"));
-        xprintf_P( PSTR("       12: medida_completa\r\n"));
+        xprintf_P( PSTR("       11: CALIBRAR\r\n"));
+        xprintf_P( PSTR("       12: MEDIDA COMPLETA\r\n"));
         xprintf_P( PSTR("       13: llenado con reactivos\r\n"));
         xprintf_P( PSTR("       14: Lavado para calibrar\r\n"));
         return;
@@ -764,9 +764,9 @@ bool cmd_test_procedimientos( char *s_pid )
         case 13:
             action_llenado_con_reactivos(true);
             break;
-        case 14:
-            action_lavado_calibracion(true);
-            break;
+//        case 14:
+//            action_lavado_calibracion(true);
+//            break;
         default:
             return(false);           
     }

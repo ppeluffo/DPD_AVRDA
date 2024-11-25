@@ -182,3 +182,27 @@ void cbk_valve_2_close(void)
     vstatus.vs2 = VALVE_CLOSE; 
 }
 //------------------------------------------------------------------------------
+bool V0_isClosed(void)
+{
+bool retS;
+    
+    (vstatus.vs0 == VALVE_CLOSE)? (retS = true): (retS = false);  
+    return (retS);
+}
+//------------------------------------------------------------------------------
+bool V1_isClosed(void)
+{
+bool retS;
+    
+    (vstatus.vs1 == VALVE_CLOSE)? (retS = true): (retS = false);  
+    return (retS);
+}
+//------------------------------------------------------------------------------
+bool V2_isClosed(void)
+{
+bool retS;
+    
+    (vstatus.vs2 == VALVE_CLOSE)? (retS = true): (retS = false);  
+    return (retS);  
+}
+//------------------------------------------------------------------------------

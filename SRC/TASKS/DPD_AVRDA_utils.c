@@ -101,6 +101,9 @@ void u_config_default(void)
     systemConf.S0 = 0;
     systemConf.S100 = 2750;
     
+    systemConf.xCal[1] = 0.881 ;
+    systemConf.yCal[1] = 3.31;
+    
             
     // Configuro a default todas las configuraciones locales
     pump_config_default();

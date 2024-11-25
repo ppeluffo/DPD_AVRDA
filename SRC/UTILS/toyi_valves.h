@@ -83,6 +83,10 @@ void cbk_valve_1_close(void);
 void cbk_valve_2_open(void);
 void cbk_valve_2_close(void);
 
+bool V0_isClosed(void);
+bool V1_isClosed(void);
+bool V2_isClosed(void);
+
 #ifdef	__cplusplus
 }
 #endif

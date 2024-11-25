@@ -454,6 +454,7 @@ uint8_t timeout = 0;
 bool retS = false;
 int16_t fptr;
 int16_t days2calibrate;
+uint8_t i;
 
     if (f_debug_comms ) {
         xprintf_P(PSTR("WAN:: DATA.\r\n"));
@@ -477,6 +478,12 @@ int16_t days2calibrate;
     fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&S0=%d&S100=%d"), dr->S0, dr->S100);
     fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&ABS=%0.3f&CLPPM=%0.2f"), dr->absorbancia, dr->cloro_ppm);
     fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&TSdate=%s&TStime=%s"), dr->ts_date, dr->ts_time);
+    
+    // DEBUG ( SE ELIMINA CUANDO NO SEA PROTOTIPO )
+    fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&TTM=%lu"), systemVars.time2medida);
+    for(i=0; i<CICLOS_MEDIDA;i++) {
+        fptr += sprintf_P( &wan_tx_buffer[fptr], PSTR("&ADC%d=%d"), i, systemVars.l_adc[i]);
+    }
 
     
     if ( days2calibrate  < 1 ) {

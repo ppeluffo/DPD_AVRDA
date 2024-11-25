@@ -14,6 +14,10 @@
  * PENDIENTE:
  * - Procedimiento de cambio de bombas y seteo de frecuencias
  * 
+ * 20204-11-22:
+ * Problemas:
+ * - Con T_LAVADO_CELDA = 35 se cuelga.
+ * - Revisar los procedimientos de acciones.
  * 
  * Version 1.0.4 @ 20241001
  * - Creo los test de todos los perifericos

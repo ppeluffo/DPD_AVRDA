@@ -88,8 +88,8 @@ extern "C" {
 #include "modem_lte.h"
 #include "lcd_cfa533.h"
 
-#define FW_REV "1.0.0"
-#define FW_DATE "@ 20241119"
+#define FW_REV "1.0.2"
+#define FW_DATE "@ 20241125"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -160,9 +160,25 @@ bool starting_flag;
 
 #define TIMESTAMP_SIZE 8
 
+#define TIMER2MEDIDA_INICIAL    1800
+#define CICLOS_MEDIDA            3
+
+#define T_LLENADO_RESERVORIO    15
+#define CNT_LLENADO_RESERVORIO  30000
+#define T_VACIADO_RESERVORIO    20
+#define T_PURGA_CANAL           15
+#define T_LAVADO_CELDA          25
+#define T_PURGA_TUBO            10
+#define T_LLENADO_CELDA         20  //10 mL
+#define T_VACIADO_CELDA         10
+#define T_DISPENSAR_DPD         13  //0.5 mL
+#define T_DISPENSAR_BUFFER      13  //0.5 mL
+#define CICLOS_LAVADO            4
+
 typedef struct { 
     float cloro_ppm;
     float absorbancia;
+    uint16_t l_adc[CICLOS_MEDIDA];
     char ts_date[TIMESTAMP_SIZE];
     char ts_time[TIMESTAMP_SIZE];
     uint32_t time2medida;
@@ -237,19 +253,6 @@ struct {
     bool debug;
 } actionCB;
 
-#define TIMER2MEDIDA_INICIAL    1800
-#define CICLOS_MEDIDA            3
-#define T_LLENADO_RESERVORIO_MAX    15
-#define CNT_LLENADO_RESERVORIO  25000
-#define T_PURGA_CANAL           15
-#define T_VACIADO_RESERVORIO    20
-#define T_LAVADO_CELDA          25
-#define T_LLENADO_CELDA         20  //10 mL
-#define T_VACIADO_CELDA         10
-#define T_DISPENSAR_DPD         13  //0.5 mL
-#define T_DISPENSAR_BUFFER      13  //0.5 mL
-#define CICLOS_LAVADO            4
-
 void action_inicio_sistema( bool debug);
 void action_lavado_reservorio_de_muestra(bool debug);
 void action_llenado_reservorio_con_muestra_a_medir(bool debug);
@@ -262,7 +265,7 @@ void action_fin_sistema(bool debug);
 void action_llenar_celda_medida(bool debug);
 void action_vaciar_celda_medida(bool debug);
 void action_calibrar(bool debug);
-void action_lavado_calibracion(bool debug);
+//void action_lavado_calibracion(bool debug);
 void action_llenado_con_reactivos(bool debug);
 void action_medida_completa(bool debug);
 
