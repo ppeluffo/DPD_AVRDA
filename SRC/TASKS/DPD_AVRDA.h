@@ -88,8 +88,8 @@ extern "C" {
 #include "modem_lte.h"
 #include "lcd_cfa533.h"
 
-#define FW_REV "1.0.2"
-#define FW_DATE "@ 20241125"
+#define FW_REV "1.0.4"
+#define FW_DATE "@ 20241209"
 #define HW_MODELO "DPD_AVRDA FRTOS R001 HW:AVR128DA64"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "DPD"
@@ -163,17 +163,20 @@ bool starting_flag;
 #define TIMER2MEDIDA_INICIAL    1800
 #define CICLOS_MEDIDA            3
 
-#define T_LLENADO_RESERVORIO    15
+#define T_LLENADO_RESERVORIO    20
 #define CNT_LLENADO_RESERVORIO  30000
 #define T_VACIADO_RESERVORIO    20
 #define T_PURGA_CANAL           15
 #define T_LAVADO_CELDA          25
 #define T_PURGA_TUBO            10
 #define T_LLENADO_CELDA         20  //10 mL
+#define T_LLENADO_CELDA_S100    25 
 #define T_VACIADO_CELDA         10
 #define T_DISPENSAR_DPD         13  //0.5 mL
 #define T_DISPENSAR_BUFFER      13  //0.5 mL
 #define CICLOS_LAVADO            4
+#define LAVADOS_CELDA_PRE        3
+#define LAVADOS_CELDA_POST       3
 
 typedef struct { 
     float cloro_ppm;

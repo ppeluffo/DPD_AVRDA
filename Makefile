@@ -14,7 +14,6 @@
 #     .help-pre:               called before 'help' target
 #     .help-post:              called after 'help' target
 #
-#
 #  Targets beginning with '.' are not intended to be called on their own.
 #
 #  Main targets can be executed directly, and they are:

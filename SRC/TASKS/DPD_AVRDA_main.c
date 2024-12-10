@@ -13,6 +13,11 @@
  * 
  * PENDIENTE:
  * - Procedimiento de cambio de bombas y seteo de frecuencias
+ * - Si no pasa agua, mandar alarma
+ * 
+ * 2024-12-09:
+ * -Aumento T_LLENADO_RESERVORIO de 15 a 20s
+ * -Parametrizo el nro.de lavados y lo llevo a 3
  * 
  * 20204-11-22:
  * Problemas:

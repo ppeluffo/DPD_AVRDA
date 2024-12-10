@@ -223,7 +223,7 @@ int16_t rdBytes = 0;
 	if ( rdBytes == -1 ) {
 		xprintf_P(PSTR("ERROR: I2C:RTC_rtc2strplain\r\n"));
 	} else { 
-        snprintf( s_date, 8 ,"%02d%02d%02d", rtc.year, rtc.day, rtc.month );
+        snprintf( s_date, 8 ,"%02d%02d%02d", rtc.year, rtc.month, rtc.day  );
         snprintf( s_time, 8 ,"%02d%02d%02d", rtc.hour,rtc.min, rtc.sec );
     }
 }

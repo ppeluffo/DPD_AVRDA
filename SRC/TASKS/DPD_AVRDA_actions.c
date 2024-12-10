@@ -535,7 +535,7 @@ bool debug = actionCB.debug;
     if (debug) {
         xprintf_P(PSTR("Llenando..\r\n"));
     }
-    for ( timer=0; timer <T_LLENADO_RESERVORIO ; timer++) {
+    for ( timer=0; timer < T_LLENADO_RESERVORIO ; timer++) {
         vTaskDelay( ( TickType_t)( (1000) / portTICK_PERIOD_MS ) );
         if ( counter_read() > CNT_LLENADO_RESERVORIO ) {
             break;
@@ -663,9 +663,9 @@ bool debug = actionCB.debug;
     
     // Prendo M2 para llenar la celda con muestra
     // El agua debe superar el nivel del led (10mL)
-    pump_2_run(debug, T_LLENADO_CELDA);
+    pump_2_run(debug, T_LLENADO_CELDA_S100);
     // Espero que purge
-    vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA * 1000) / portTICK_PERIOD_MS ) );
+    vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA_S100 * 1000) / portTICK_PERIOD_MS ) );
     // La bomba se apaga sola
 
     // Apago el opto
@@ -1156,6 +1156,7 @@ void cbk_medida_completa(void)
      */
     
  bool debug = actionCB.debug;
+ uint8_t i;
  
     if (debug) {
         xprintf_P(PSTR(">>Medida Completa: START\r\n"));
@@ -1169,15 +1170,17 @@ void cbk_medida_completa(void)
     cbk_llenado_reservorio_con_muestra_a_medir();
     
     // Hacemos 2 lavados antes
-    cbk_lavado_celda();
-    cbk_lavado_celda();
+    for (i=0; i<LAVADOS_CELDA_PRE; i++) {
+        cbk_lavado_celda();
+    }
     
     cbk_ajustes_fotometricos();
     cbk_medicion();
     
     // Hacemos 2 lavados al final
-    cbk_lavado_celda();
-    cbk_lavado_celda();
+    for (i=0; i<LAVADOS_CELDA_POST; i++) {
+        cbk_lavado_celda();
+    }
     
     cbk_fin_sistema();
     
@@ -1200,186 +1203,6 @@ void await(uint16_t secs )
 {
     while ( secs-- > 0  ) {
         vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
-    }
-}
-//------------------------------------------------------------------------------
-void __cbk_medicion(void)
-{
-    
-uint8_t ciclo;
-uint16_t adc = 0;
-float denom;
-float pabs[CICLOS_MEDIDA];
-bool debug = actionCB.debug;
-
-    if(debug) {
-        xprintf_P(PSTR(">>Medicion: START\r\n"));
-    }
-
-    fsm_telepronter("Medicion");    
-    
-    //systemVars.absorbancia = 0.0;
-    
-    // Prendo el OPTO
-    opto_on(debug);
-    await(1);
-    // Espero 5 que se estabilize la señal fotometrica
-    //vTaskDelay( ( TickType_t)( 5000 / portTICK_PERIOD_MS ) );
-    
-    for (ciclo = 0; ciclo <  CICLOS_MEDIDA; ciclo++) {
-           
-        // Cierro V2
-        valve_2_close(debug);
-        await(1); 
-        vTaskDelay( ( TickType_t)( 3000 / portTICK_PERIOD_MS ) );
-        
-        // Prendo M0 10s para dispensar 0.5ml de reactivo DPD
-        pump_0_run(debug, T_DISPENSAR_DPD);
-        // Espero
-        vTaskDelay( ( TickType_t)( (T_DISPENSAR_DPD * 1000) / portTICK_PERIOD_MS ) );
-        
-        // Prendo M1 11.5 para dispensar 0.5ml de buffer
-        pump_1_run(debug, T_DISPENSAR_BUFFER);
-        // Espero
-        vTaskDelay( ( TickType_t)( (T_DISPENSAR_BUFFER * 1000) / portTICK_PERIOD_MS ) );
-        
-        // Prendo M2  para dispensar 10mL de muestra
-        pump_2_run(debug, T_LLENADO_CELDA );
-        // Espero
-        vTaskDelay( ( TickType_t)( (T_LLENADO_CELDA *1000) / portTICK_PERIOD_MS ) );
-    
-        // Leo la señal fotometrica
-        adc_read(debug, 128);
-        await(1);
-        adc = adcCB.result;
-        
-        // Calculamos la absorbancia
-        denom = (1.0*(systemConf.S100 - systemConf.S0));
-        if ( denom != 0 ) {
-            pabs[ciclo] = -1.0 * log10f ( 1.0*( adc - systemConf.S0)/denom );
-            //systemVars.absorbancia += pabs[ciclo];
-        
-            if (debug) {
-                xprintf_P(PSTR("Ciclo=%d, ADC=%d, abs=%0.4f\r\n"), ciclo, adc, pabs[ciclo]);
-            }
-            
-        } else {
-           pabs[ciclo] = -1; 
-           //systemVars.absorbancia += pabs[ciclo];
-           xprintf_P(PSTR("ERROR: S0==S100, abs=%0.4f\r\n"), pabs[ciclo]);
-           
-        }
-        
-        // Abro V2 para vaciar la celda de reacción
-        valve_2_open(debug);
-        await(1); 
-        vTaskDelay( ( TickType_t)( (T_VACIADO_CELDA * 1000) / portTICK_PERIOD_MS ) );
-    
-    }
-
-    // Apago el OPTO
-    opto_off(debug);
-    await(1);
-    
-    /*
-     * Calculo la absorbancia:
-     * Me quedo con las (n-1) mejores medidas
-     */
-    
-    systemVars.absorbancia /= CICLOS_MEDIDA;
-    
-    systemVars.cloro_ppm = cloro_from_absorbancia(systemVars.absorbancia, debug);
-    
-    // Agrego el timestamp de cuando tome la medida
-    RTC_rtc2strplain(&systemVars.ts_date[0], &systemVars.ts_time[0]);
-   
-    if (debug) {
-        xprintf_P(PSTR(">>END\r\n"));
-    }     
-}
-//------------------------------------------------------------------------------
-void __action_await(void)
-{
-    while ( ! actionCB.standby ) {
-        vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
-    }
-}
-//------------------------------------------------------------------------------
-void __cbk_lavado_calibracion(void)
-{
-   
-    /*
-     * Realiza todo el ciclo de medida
-     */
- 
- bool debug = actionCB.debug;
- 
-    if (debug) {
-        xprintf_P(PSTR(">>Lavado de Calibracion: START\r\n"));
-    }
-    
-    fsm_telepronter("Lavado Cal.");
-    
-    cbk_inicio_sistema();
-    cbk_llenado_reservorio_con_muestra_a_medir();
-    cbk_lavado_celda();
-    cbk_lavado_celda();
-          
-    // Abro V2: Vacio el canal de muestra (por las dudas)
-    valve_2_open(debug);
-    await(1);
- 
-    if (debug) {
-        xprintf_P(PSTR(">>END\r\n"));
-    }
-}
-//------------------------------------------------------------------------------
-void __action_lavado_calibracion(bool debug)
-{
-    if ( systemVars.midiendo == true) {
-        xprintf_P(PSTR("ERROR: Lavado de Calibracion\r\n"));
-    }
-    
-    //actionCB.fn = cbk_lavado_calibracion;
-    actionCB.standby = false;
-    actionCB.debug = debug;    
-}
-//------------------------------------------------------------------------------
-void __cbk_calibrar(void)
-{
-   
-    /*
-     * Realiza todo el ciclo de medida
-     */
- 
- bool debug = actionCB.debug;
- 
-    if (debug) {
-        xprintf_P(PSTR(">>Calibrar: START\r\n"));
-    }
-    
-    fsm_telepronter("Calibrar");
-    
-    cbk_inicio_sistema();
-
-    cbk_ajustes_fotometricos();
-       
-    cbk_medicion();
-   
-    // Apago el opto
-    opto_off(debug);
-    await(1);
-     
-    // Cierro V0: No entra agua de muestra
-    valve_0_close(debug);
-    await(1);
-       
-    // Abro V2: Vacio el canal de muestra (por las dudas)
-    valve_2_open(debug);
-    await(1);
- 
-    if (debug) {
-        xprintf_P(PSTR(">>END\r\n"));
     }
 }
 //------------------------------------------------------------------------------
